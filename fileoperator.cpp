@@ -38,9 +38,16 @@ bool FileOperator::openFile(std::string path,uint8_t property)
 {
     try{
         Option<ContentItem> result = findContentItem(path);
+
         if(result.none){
             return false;
         }
+        /***/
+        qInfo()<<"in FileOperator::openFile";
+        qInfo()<<"here line 47";
+        for(unsigned i = 0;i<8;++i)
+            qInfo()<<result.some.toUint8Array()[i];
+        /***/
         openedList.insert(
                     std::make_pair(
                         path,
@@ -349,7 +356,7 @@ Option<ContentItem> FileOperator::findContentItem(std::string path)
 //检查文件名是否合法
 bool FileOperator::checkName(std::string path)
 {
-    QRegExp reg(QString("^rot(/[^\\$\\./]{3})*(\\.[^\\$\\./]{2}){0,1}$"));
+    QRegExp reg(QString("^rot(/[^\\$\\./]{3})*(/[^\\$\\./]{3}\\.[^\\$\\./]{2}){0,1}$"));
     return reg.exactMatch(QString(path.data()));
 }
 
@@ -365,10 +372,28 @@ std::tuple<uint8_t,uint8_t> FileOperator::findIndex(std::string path)
         return std::make_tuple((uint8_t)2,(uint8_t)0);
 
     //如果路径名为 rot/.../bbb（也包括rot/bbb）
-    //则先找出 bbb 父目录的 ContentItem
-    std::string folderPath = path.substr(0,path.length()-4);
-    std::string fileName = path.substr(path.length()-3,3);
+    //则先找出 bbb 的父目录的 ContentItem
+    bool isMenu = true;
+    std::string folderPath;
+    std::string fileName;
+    std::string typeName = "  ";
+    if(path.at(path.length()-3)=='.'){
+        //这是一个文件
+        folderPath = path.substr(0,path.length()-7);
+        fileName = path.substr(path.length()-6,3);
+        typeName = path.substr(path.length()-2,2);
+        isMenu = false;
+    }else{
+        //这是一个目录
+        folderPath = path.substr(0,path.length()-4);
+        fileName = path.substr(path.length()-3,3);
+    }
     auto result = findContentItem(folderPath);
+    /***/
+    qInfo()<<"in FileOperator::findIndex";
+    qInfo()<<"folderPath: "<<folderPath.data();
+    qInfo()<<"fileName: "<<fileName.data();
+    /***/
     if(result.none)
         return std::make_tuple((uint8_t)255,(uint8_t)255);
     ContentItem folder = result.some;
@@ -384,11 +409,13 @@ std::tuple<uint8_t,uint8_t> FileOperator::findIndex(std::string path)
             block = disk.readBlock(blockIndex);
         }
 
-        std::string name;
+        std::string name, type;
         name.append(1,(char)block.at(innerIndex));
         name.append(1,(char)block.at(innerIndex+1));
         name.append(1,(char)block.at(innerIndex+2));
-        if(fileName==name){
+        type.append(1,(char)block.at(innerIndex+3));
+        type.append(1,(char)block.at(innerIndex+4));
+        if(fileName==name && (isMenu || (!isMenu && type==typeName))){
             return std::make_tuple((uint8_t)blockIndex,(uint8_t)innerIndex);
         }
     }
@@ -434,41 +461,69 @@ bool FileOperator::deleteFile(std::string path)
      *                          文件存在
      *                          检查文件大小--文件大小为0--将此文件对应的ContentItem从父目录的内容中删去，
      *                                       \           将父目录的ContentItem的length-8，调整父目录的内容的分布。
-     *                                       \           检查父目录内容所占最后一块磁盘空间是否只有一个ContentItem-----------只有一个
-     *                                       \                                                                          把最后一个ContentItem覆盖要删掉的此文件的ContentItem，把此块写回磁盘。再把
-     *                                       \                                                                          fat中父目录内容所占最后一块磁盘空间对应的项置为255，并把fat写回磁盘。（删除成功）
-     *                                       \                                                                          \
-     *                                       \                                                                          \
-     *                                       \                                                                          不止一个
-     *                                       \                                                                          把最后一个ContentItem覆盖要删掉的此文件的ContentItem，把此块写回磁盘。（删除成功）
+     *                                       \           检查要删除的ContentItem是否是父目录内容的最后一个一个ContentItem-----------------------是
+     *                                       \                                                                                             使父目录ContentItem的length减少8，并写回磁盘
+     *                                       \                                                                                             检查此时父目录内容所占最后一块磁盘空间是否为空-----空
+     *                                       \                                                                                             \                                             把fat中父目录内容所占最后一块磁盘空间对应的项置为255，并把fat写回磁盘。
+     *                                       \                                                                                             \                                             \
+     *                                       \                                                                                             \                                             \
+     *                                       \                                                                                             \                                             不空
+     *                                       \                                                                                             \                                             （删除成功）
+     *                                       \                                                                                             \
+     *                                       \                                                                                             \
+     *                                       \                                                                                             不是
+     *                                       \                                                                                             把最后一个ContentItem覆盖要删掉的此文件的ContentItem，把此块写回磁盘。
+     *                                       \                                                                                             检查此时父目录内容所占最后一块磁盘空间是否为空-----------------------------空
+     *                                       \                                                                                                                                                                   把fat中父目录内容所占最后一块磁盘空间对应的项置为255，并把fat写回磁盘。
+     *                                       \                                                                                                                                                                   \
+     *                                       \                                                                                                                                                                   \
+     *                                       \                                                                                                                                                                   不空
+     *                                       \                                                                                                                                                                   （删除成功）
+     *                                       \
+     *                                       \
+     *                                       \
+     *                                       \
+     *                                       \
      *                                       \
      *                                       \
      *                                       文件大小不为0--修改fat，将分配给此文件的磁盘空间全部回收，并将fat写回硬盘
+     *                                                     将此文件对应的ContentItem从父目录的内容中删去，
      *                                                     将父目录的ContentItem的length-8，调整父目录的内容的分布。
-     *                                                     检查父目录内容所占最后一块磁盘空间是否只有一个ContentItem-----------只有一个
-     *                                                                                                                    把最后一个ContentItem覆盖要删掉的此文件的ContentItem，把此块写回磁盘。再把
-     *                                                                                                                    fat中父目录内容所占最后一块磁盘空间对应的项置为255，并把fat写回磁盘。（删除成功）
-     *                                                                                                                    \
-     *                                                                                                                    \
-     *                                                                                                                    不止一个
-     *                                                                                                                    把最后一个ContentItem覆盖要删掉的此文件的ContentItem，把此块写回磁盘。（删除成功）
+     *                                                     检查要删除的ContentItem是否是父目录内容的最后一个一个ContentItem-----------是
+     *                                                                                                                           使父目录ContentItem的length减少8，并写回磁盘
+     *                                                                                                                           检查此时父目录内容所占最后一块磁盘空间是否为空-----空
+     *                                                                                                                           \                                             把fat中父目录内容所占最后一块磁盘空间对应的项置为255，并把fat写回磁盘。
+     *                                                                                                                           \                                             \
+     *                                                                                                                           \                                             \
+     *                                                                                                                           \                                             不空
+     *                                                                                                                           \                                             （删除成功）
+     *                                                                                                                           \
+     *                                                                                                                           \
+     *                                                                                                                           不是
+     *                                                                                                                           把最后一个ContentItem覆盖要删掉的此文件的ContentItem，把此块写回磁盘。
+     *                                                                                                                           检查此时父目录内容所占最后一块磁盘空间是否为空-----------------------------空
+     *                                                                                                                                                                                                 把fat中父目录内容所占最后一块磁盘空间对应的项置为255，并把fat写回磁盘。
+     *                                                                                                                                                                                                 \
+     *                                                                                                                                                                                                 \
+     *                                                                                                                                                                                                 不空
+     *                                                                                                                                                                                                 （删除成功）
      *
      */
 
     //检查参数是否正确
-    if(checkName(path))
+    QRegExp reg(QString("^rot(/[^\\$\\./]{3})*(/[^\\$\\./]{3}\\.[^\\$\\./]{2})$"));
+    if(!reg.exactMatch(QString(path.data())))
         return false;
+
     if(path==std::string("rot")) //根目录不能删除，删除失败
         return false;
     Option<ContentItem> result = findContentItem(path);
     //检查文件是否存在
     if(result.none)
         return false; //不存在，删除失败
-
     ContentItem file = result.some;
-
     //获取父目录的ContentItem
-    std::string folderName = path.substr(0,path.length()-4);
+    std::string folderName = path.substr(0,path.length()-7);
     ContentItem folder = findContentItem(folderName).some;
     //检查文件大小是否为0
     if(file.length!=0){
@@ -489,25 +544,35 @@ bool FileOperator::deleteFile(std::string path)
         while(t!=255){
             lastBlockIndex = t;
             t = fat[t];
-        }
-        Block buff1,buff2;
-        buff1 = disk.readBlock(lastBlockIndex);
+        }     
         uint8_t lastInnerIndex;
         lastInnerIndex = folder.length%64-8;
         //获取要删除的文件的ContentItem的位置
         uint8_t blockIndex, innerIndex;
         std::tie(blockIndex,innerIndex) = findIndex(path);
-        buff2 = disk.readBlock(blockIndex);
+        /***/
+        qInfo()<<"in FileOperator::deleteFile";
+        qInfo()<<"lastBlockIndex: "<<lastBlockIndex;
+        qInfo()<<"lastInnerIndex: "<<lastInnerIndex;
+        qInfo()<<"blockIndex: "<<blockIndex;
+        qInfo()<<"innerIndex: "<<innerIndex;
+        /***/
+        //如果要删除的ContentItem不是最后一块
         //用最后一块ContentItem覆盖要删除的ContentItem，并写回磁盘
-        for(unsigned i = 0;i<8;++i){
-            buff2[innerIndex+i] =  buff1[lastInnerIndex+i];
+        if(!(lastBlockIndex==blockIndex && lastInnerIndex==innerIndex)){
+            Block buff1,buff2;
+            buff1 = disk.readBlock(lastBlockIndex);
+            buff2 = disk.readBlock(blockIndex);
+            for(unsigned i = 0;i<8;++i){
+                buff2[innerIndex+i] =  buff1[lastInnerIndex+i];
+            }
+            disk.writeBlock(buff2,blockIndex);
         }
-        disk.writeBlock(buff2,blockIndex);
         folder.length -= 8;
         //检查父目录内容中最后一块ContentItem被转移后，对应的磁盘空间
         //是否还有内容，若没有，在fat中将其标记为空闲，最后将fat写回磁盘。
         if(folder.length % 64 == 0){
-            fat[lastBlockIndex] = 255;
+            fat[lastBlockIndex] = 0;
         }
     }
 
@@ -517,8 +582,26 @@ bool FileOperator::deleteFile(std::string path)
         uint8_t folderBlockIndex, folderInnerIndex;
         std::tie(folderBlockIndex,folderInnerIndex) = findIndex(folderName);
         buff = disk.readBlock(folderBlockIndex);
+        /***/
+        qInfo()<<"in FileOperator::deleteFile";
+        qInfo()<<"folderBlockIndex: "<<folderBlockIndex;
+        qInfo()<<"folderInnerIndex: "<<folderInnerIndex;
+        qInfo()<<"buff[folderInnerIndex+7]: "<<buff[folderInnerIndex+0];
+        qInfo()<<"buff[folderInnerIndex+7]: "<<buff[folderInnerIndex+1];
+        qInfo()<<"buff[folderInnerIndex+7]: "<<buff[folderInnerIndex+2];
+        qInfo()<<"buff[folderInnerIndex+7]: "<<buff[folderInnerIndex+3];
+        qInfo()<<"buff[folderInnerIndex+7]: "<<buff[folderInnerIndex+4];
+        qInfo()<<"buff[folderInnerIndex+7]: "<<buff[folderInnerIndex+5];
+        qInfo()<<"buff[folderInnerIndex+7]: "<<buff[folderInnerIndex+6];
+        qInfo()<<"buff[folderInnerIndex+7]: "<<buff[folderInnerIndex+7];
+        qInfo()<<"folder name: "<<QString(folderName.data());
+        /***/
         buff[folderInnerIndex+7] -= 8;
         disk.writeBlock(buff,folderBlockIndex);
+        /***/
+        qInfo()<<"in FileOperator::deleteFile";
+        qInfo()<<"buff[folderInnerIndex+7]: "<<buff[folderInnerIndex+7];
+        /***/
     }
 
     //把fat写回磁盘
@@ -528,7 +611,12 @@ bool FileOperator::deleteFile(std::string path)
             buff[i] = fat[i];
         disk.writeBlock(buff,0);
         for(unsigned i = 0;i<64;++i)
-            buff[64+i] = fat[64+i];
+            buff[i] = fat[64+i];
         disk.writeBlock(buff,1);
     }
+    /***/
+    qInfo()<<"in FileOperator::deleteFile";
+    qInfo()<<"here line 597 ";
+    /***/
+    return true;
 }

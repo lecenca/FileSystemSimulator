@@ -31,8 +31,7 @@ SOURCES += \
     fileiter.cpp \
     openedlistitem.cpp \
     contentitem.cpp \
-    createfiledialog.cpp \
-    filelistwidget.cpp
+    createfiledialog.cpp
 
 HEADERS += \
         mainwindow.h \
@@ -42,8 +41,7 @@ HEADERS += \
     fileiter.h \
     openedlistitem.h \
     option.h \
-    createfiledialog.h \
-    filelistwidget.h
+    createfiledialog.h
 
 FORMS += \
         mainwindow.ui \

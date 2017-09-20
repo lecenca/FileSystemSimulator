@@ -14,7 +14,7 @@ public:
 
     //由于读磁盘只能一块一块读，并且设定一个盘块64B，
     //所以用这个函数假装一次只能读64B。
-    Block readBlock(unsigned index);
+    Block readBlock(uint8_t index);
     void writeBlock(Block block, uint8_t index);
 
 private:

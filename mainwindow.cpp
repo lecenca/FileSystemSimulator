@@ -49,11 +49,6 @@ void MainWindow::createFile(std::string name,std::string type,uint8_t property)
         createSuccrssfully = fileOperator.md(path,property);
     }
     //若创建成功，刷新当前文件夹显示
-    /***/
-    qInfo()<<"in MainWindow::createFile";
-    qInfo()<<"createSuccrssfully = "<<createSuccrssfully;
-    /***/
-
     if(createSuccrssfully)
         refreshFolderDisplay();
 }
@@ -69,10 +64,8 @@ void MainWindow::refreshFolderDisplay()
         currentFolderContent.clear();
         if(!fileOperator.openFile(folderPath,0)){
             //打开失败
-            /***/
             qInfo()<<"break in MainWindow::refreshFolderDisplay";
             qInfo()<<"open folderPath false, this should not happen";
-            /***/
             throw std::exception();
         }
         for(;;){
@@ -129,10 +122,6 @@ void MainWindow::on_listWidget_customContextMenuRequested(const QPoint &pos)
         seletedItemName = item->text().toStdString();
         QRegExp reg(QString("^([^\\$\\./]{3})\\.(([^\\$\\./]){2})$"));
         QString name = item->text();
-        /***/
-        qInfo()<<"in MainWindow::on_listWidget_customContextMenuRequested";
-        qInfo()<<name;
-        /***/
         if(reg.exactMatch(name)){
             menu->addAction(ui->actionDeleteFile);
         }else{
@@ -150,9 +139,6 @@ void MainWindow::on_actionCreateNew_triggered()
             this,MainWindow::createFile);
 
     createFileDialog->show();
-    /***/
-    qInfo()<<"MainWindow::on_actionCreateNew_triggered end";
-    /***/
 }
 
 bool MainWindow::deleteFile(std::string path)
@@ -163,6 +149,7 @@ bool MainWindow::deleteFile(std::string path)
 //右键菜单点击“删除”执行该函数
 void MainWindow::on_actionDeleteFile_triggered()
 {
-    deleteFile(folderPath+seletedItemName);
+    deleteFile(folderPath+"/"+seletedItemName);
     refreshFolderDisplay();
+
 }
