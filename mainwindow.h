@@ -19,7 +19,6 @@ public:
     ~MainWindow();
 
 private:
-    void initConnect();
     void createFile(std::string name,std::string type,uint8_t property);
     void refreshFolderDisplay();
     std::string getCurrentFolderPath();
@@ -30,6 +29,8 @@ private slots:
     void on_listWidget_customContextMenuRequested(const QPoint &pos);
 
     void on_actionCreateNew_triggered();
+
+    void on_actionDeleteFile_triggered();
 
 private:
     static const uint8_t MENU = 0b00001000;

@@ -25,7 +25,7 @@ class FileOperator
 public:
     FileOperator();
 
-    bool createFile(std::string path, std::string type, uint8_t property);
+    bool createFile(std::string path, uint8_t property);
     bool md(std::string path, uint8_t property);
     bool openFile(std::string path,uint8_t property);
     uint32_t readFile(std::string path,uint8_t* buff,uint32_t length); //返回真正读到的字节数
@@ -49,10 +49,9 @@ private:
     Option<ContentItem> findContentItem(std::string path);
     Option<ContentItem> findFile(ContentItem folder, std::string& fileName);
     bool checkName(std::string path);
-    bool checkType(std::string type);
     std::tuple<uint8_t,uint8_t> findIndex(std::string path);
     Option<uint8_t> findEmptyBlock();
-    bool createNewFile(std::string path, std::string type, uint8_t property);
+    bool createNewFile(std::string path, uint8_t property);
 
     Option<uint8_t> getNext(FileIter& iter);//读一个字节,并且文件指针后移一位；
     std::vector<std::string> split(std::string str, char delimiter);

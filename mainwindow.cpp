@@ -11,7 +11,6 @@ MainWindow::MainWindow(QWidget *parent) :
     try{
         ui->setupUi(this);
         setFixedSize(this->width(),this->height());
-        initConnect();
         folderPath = "rot";
         refreshFolderDisplay();
 
@@ -36,16 +35,15 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::initConnect(){
 
-}
-
-void MainWindow::createFile(std::string name,std::string type,uint8_t property){
+void MainWindow::createFile(std::string name,std::string type,uint8_t property)
+{
     bool createSuccrssfully = false;
     std::string path = folderPath + "/" + name;
-    if((property & 0b00000100) == 0b00000100){
+    if((property & 0b00000100) == NORMAL){
         //创建文件
-        createSuccrssfully = fileOperator.createFile(path,type,property);
+        path = path + "." + type;
+        createSuccrssfully = fileOperator.createFile(path,property);
     }else{
         //创建目录
         createSuccrssfully = fileOperator.md(path,property);
@@ -62,7 +60,8 @@ void MainWindow::createFile(std::string name,std::string type,uint8_t property){
 
 
 //重新读取当前文件夹内容，并在列表中显示。
-void MainWindow::refreshFolderDisplay(){
+void MainWindow::refreshFolderDisplay()
+{
     try{
         ui->pathLabel->setText(folderPath.data());
         uint8_t buff[64];
@@ -119,9 +118,9 @@ void MainWindow::refreshFolderDisplay(){
     }
 }
 
+//右键点击列表执行该函数
 void MainWindow::on_listWidget_customContextMenuRequested(const QPoint &pos)
 {
-
     QMenu* menu = new QMenu(this);
     QListWidgetItem* item = ui->listWidget->itemAt(ui->listWidget->mapFromGlobal(QCursor::pos()));
     if(item==nullptr){
@@ -143,6 +142,7 @@ void MainWindow::on_listWidget_customContextMenuRequested(const QPoint &pos)
     menu->exec(QCursor::pos());
 }
 
+//右键菜单或菜单点击“新建”执行该函数
 void MainWindow::on_actionCreateNew_triggered()
 {
     CreateFileDialog* createFileDialog = new CreateFileDialog(this);
@@ -150,9 +150,19 @@ void MainWindow::on_actionCreateNew_triggered()
             this,MainWindow::createFile);
 
     createFileDialog->show();
+    /***/
+    qInfo()<<"MainWindow::on_actionCreateNew_triggered end";
+    /***/
 }
 
 bool MainWindow::deleteFile(std::string path)
 {
     fileOperator.deleteFile(path);
+}
+
+//右键菜单点击“删除”执行该函数
+void MainWindow::on_actionDeleteFile_triggered()
+{
+    deleteFile(folderPath+seletedItemName);
+    refreshFolderDisplay();
 }

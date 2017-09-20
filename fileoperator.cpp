@@ -100,8 +100,17 @@ uint32_t FileOperator::readFile(std::string path, uint8_t *buff, uint32_t length
 //寻找folder文件夹里，名为fileName的文件
 Option<ContentItem> FileOperator::findFile(ContentItem folder, std::string& fileName)
 {
-    if(folder.length==0 || fileName.length()!=3)
+    if(folder.length==0)
         return Option<ContentItem>();
+
+    bool isMenu = true;
+    std::string typeName;
+    QRegExp reg(QString("^[^\\$\\./]{3}\\.[^\\$\\./]{2}$"));
+    if(reg.exactMatch(QString(fileName.data()))){
+        typeName = fileName.substr(4,2);
+        fileName = fileName.substr(0,3);
+        isMenu = false;
+    }
 
     Block block = disk.readBlock(folder.startPos);
     uint8_t blockIndex = folder.startPos;
@@ -113,12 +122,14 @@ Option<ContentItem> FileOperator::findFile(ContentItem folder, std::string& file
             blockIndex = fat[blockIndex];
             block = disk.readBlock(blockIndex);
         }
-
         std::string name;
         name.append(1,(char)block.at(innerIndex));
         name.append(1,(char)block.at(innerIndex+1));
         name.append(1,(char)block.at(innerIndex+2));
-        if(fileName==name){
+        std::string type;
+        type.append(1,(char)block.at(innerIndex+3));
+        type.append(1,(char)block.at(innerIndex+4));
+        if(fileName==name && (isMenu || (!isMenu && typeName==type))){
             auto iter = block.begin();
             std::advance(iter,innerIndex);
             ContentItem item = ContentItem::convertToItem(iter);
@@ -159,7 +170,7 @@ Option<uint8_t> FileOperator::getNext(FileIter& iter)
     return result;
 }
 
-bool FileOperator::createNewFile(std::string path, std::string type, uint8_t property)
+bool FileOperator::createNewFile(std::string path, uint8_t property)
 {
     //此函数的大致逻辑如下
     /**
@@ -203,28 +214,45 @@ bool FileOperator::createNewFile(std::string path, std::string type, uint8_t pro
      *                                                                                                                                                                  把fat写回磁盘（创建成功）
      **/
     try{
-        if(!checkName(path)||!checkType(type))
+        if(!checkName(path))
             return false;
 
-        std::string folderPath = path.substr(0,path.length()-4);
-        std::string fileName = path.substr(path.length()-3,3);
+        std::string type = "  ";
+        std::string folderPath;
+        std::string fileName;
+        if(path.at(path.length()-3) == '.'){
+            //新建的是文件
+            folderPath = path.substr(0,path.length()-7);
+            fileName = path.substr(path.length()-6,6);
+            type = path.substr(path.length()-2,2);
+        }else{
+            //新建的是目录/文件夹
+            folderPath = path.substr(0,path.length()-4);
+            fileName = path.substr(path.length()-3,3);
+        }
+
+        //找到父目录的ContentItem
         Option<ContentItem> folderResult = findContentItem(folderPath);
-        if(folderResult.none)
+        if(folderResult.none) //父目录不存在，新建失败
             return false;
+        //查看文件是否已存在
         Option<ContentItem> fileResult = findFile(folderResult.some,fileName);
-        if(!fileResult.none)
+        if(!fileResult.none) //文件已存在，创建失败
             return false;
+        /***/
+        qInfo()<<"here";
+        /***/
 
         //找到folder的内容，将新建item写入最后面
         ContentItem folder = folderResult.some;
         ContentItem item;
-        item.setName(fileName);
+        item.setName(fileName.substr(0,3));
         item.setType(type);
         item.property = property;
         item.startPos = 255;
         item.length = 0;
         std::array<uint8_t,8> arr = item.toUint8Array();
-        //如果该文件所占的最后一个盘块没满，就将最后一块盘块找出来。
+        //如果该文件父目录所占的最后一个盘块没满，就将最后一块盘块找出来。
         if(folder.length % 64 != 0){
             uint8_t blockIndex = folder.startPos;
             uint8_t blockLength = folder.length / 64;
@@ -255,7 +283,8 @@ bool FileOperator::createNewFile(std::string path, std::string type, uint8_t pro
             }
             disk.writeBlock(block,blockIndex);
             //修改fat
-            //如果文件内容本来为空，则修改ContenItem的startPos,并将fat中blockIndex的位置置255
+            //如果文件内容本来为空，则修改ContenItem的startPos,并将fat中blockIndex的位置置255，
+            //使该ContentItem的length增加8，全部写回磁盘。
             if(folder.length==0){
                 folder.startPos = blockIndex;
                 fat[blockIndex] = 255;
@@ -289,7 +318,6 @@ bool FileOperator::createNewFile(std::string path, std::string type, uint8_t pro
             for(unsigned i = 0;i<64;++i)
                 block[i] = fat[64+i];
             disk.writeBlock(block,1);
-            //
         }
         return true;
     }
@@ -321,7 +349,7 @@ Option<ContentItem> FileOperator::findContentItem(std::string path)
 //检查文件名是否合法
 bool FileOperator::checkName(std::string path)
 {
-    QRegExp reg(QString("^rot(/[^\\$\\./]{3})*$"));
+    QRegExp reg(QString("^rot(/[^\\$\\./]{3})*(\\.[^\\$\\./]{2}){0,1}$"));
     return reg.exactMatch(QString(path.data()));
 }
 
@@ -376,28 +404,19 @@ Option<uint8_t> FileOperator::findEmptyBlock()
     return Option<uint8_t>();
 }
 
-bool FileOperator::createFile(std::string path, std::string type, uint8_t property)
+bool FileOperator::createFile(std::string path, uint8_t property)
 {
-    return createNewFile(path,type,property);
+    return createNewFile(path,property);
 }
 
 bool FileOperator::md(std::string path, uint8_t property)
 {
-    return createNewFile(path,"  ",property); //类型对目录来说无所谓，统一填"  "
+    return createNewFile(path,property);
 }
 
 bool FileOperator::closeFile(std::string path)
 {
     openedList.erase(path);
-    return true;
-}
-
-bool FileOperator::checkType(std::string type)
-{
-    //未完善
-    if(type.length()!=2){
-        return false;
-    }
     return true;
 }
 
