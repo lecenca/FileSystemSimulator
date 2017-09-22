@@ -143,7 +143,7 @@ void MainWindow::on_actionCreateNew_triggered()
 
 bool MainWindow::deleteFile(std::string path)
 {
-    return fileOperator.deleteFile(path);
+    fileOperator.deleteFile(path);
 }
 
 //右键菜单点击“删除”执行该函数

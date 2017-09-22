@@ -9,8 +9,8 @@
 
 FileOperator::FileOperator()
 {
-    Block blk0 = disk.readBlock(0).some;
-    Block blk1 = disk.readBlock(1).some;
+    Block blk0 = disk.readBlock(0);
+    Block blk1 = disk.readBlock(1);
     for(unsigned i = 0;i<64;++i){
         fat[i] = blk0[i];
         fat[64+i] = blk1[i];
@@ -20,7 +20,7 @@ FileOperator::FileOperator()
 ContentItem FileOperator::getRootItem()
 {
     ContentItem rootItem;
-    Block blk = disk.readBlock(2).some;
+    Block blk = disk.readBlock(2);
     rootItem.name[0] = blk[0];
     rootItem.name[1] = blk[1];
     rootItem.name[2] = blk[2];
@@ -119,7 +119,7 @@ Option<ContentItem> FileOperator::findFile(ContentItem folder, std::string& file
         isMenu = false;
     }
 
-    Block block = disk.readBlock(folder.startPos).some;
+    Block block = disk.readBlock(folder.startPos);
     uint8_t blockIndex = folder.startPos;
     uint8_t innerIndex = 0;
     uint8_t logicIndex = 0;
@@ -127,7 +127,7 @@ Option<ContentItem> FileOperator::findFile(ContentItem folder, std::string& file
         if(innerIndex>=64){
             innerIndex = innerIndex % 8;
             blockIndex = fat[blockIndex];
-            block = disk.readBlock(blockIndex).some;
+            block = disk.readBlock(blockIndex);
         }
         std::string name;
         name.append(1,(char)block.at(innerIndex));
@@ -165,7 +165,7 @@ Option<uint8_t> FileOperator::getNext(FileIter& iter)
 {
     if(iter.logicIndex==iter.length)
         return Option<uint8_t>();
-    Block block = disk.readBlock(iter.blockIndex).some;
+    Block block = disk.readBlock(iter.blockIndex);
     auto result =  Option<uint8_t>(block.at(iter.innerIndex));
     if(iter.innerIndex<63){
         ++iter.innerIndex;
@@ -267,7 +267,7 @@ bool FileOperator::createNewFile(std::string path, uint8_t property)
                 blockIndex = fat[blockIndex];
             }
             uint8_t innerIndex = folder.length % 64;
-            Block buff = disk.readBlock(blockIndex).some;
+            Block buff = disk.readBlock(blockIndex);
             //写入
             for(int i = 0;i<8;++i){
                 buff[innerIndex+i] = arr[i];
@@ -275,7 +275,7 @@ bool FileOperator::createNewFile(std::string path, uint8_t property)
             disk.writeBlock(buff,blockIndex);
             //修改folder.length为folder.length+8，并写回磁盘
             std::tie(blockIndex,innerIndex) = findIndex(folderPath);
-            buff = disk.readBlock(blockIndex).some;
+            buff = disk.readBlock(blockIndex);
             buff[innerIndex+7] += 8;
             disk.writeBlock(buff,blockIndex);
         }else{
@@ -299,7 +299,7 @@ bool FileOperator::createNewFile(std::string path, uint8_t property)
                 uint8_t blockIndex;
                 uint8_t innerIndex;
                 std::tie(blockIndex,innerIndex) = findIndex(folderPath);
-                Block blk = disk.readBlock(blockIndex).some;
+                Block blk = disk.readBlock(blockIndex);
                 std::array<uint8_t,8> array = folder.toUint8Array();
                 for(unsigned i = 0;i<8;++i){
                     blk[innerIndex+i] = array[i];
@@ -398,7 +398,7 @@ std::tuple<uint8_t,uint8_t> FileOperator::findIndex(std::string path)
         return std::make_tuple((uint8_t)255,(uint8_t)255);
     ContentItem folder = result.some;
     //父目录的 contemItem 已找到， 现查找文件所在的位置。
-    Block block = disk.readBlock(folder.startPos).some;
+    Block block = disk.readBlock(folder.startPos);
     uint8_t blockIndex = folder.startPos;
     uint8_t innerIndex = 0;
     uint8_t logicIndex = 0;
@@ -406,7 +406,7 @@ std::tuple<uint8_t,uint8_t> FileOperator::findIndex(std::string path)
         if(innerIndex>=64){
             innerIndex = innerIndex % 8;
             blockIndex = fat[blockIndex];
-            block = disk.readBlock(blockIndex).some;
+            block = disk.readBlock(blockIndex);
         }
 
         std::string name, type;
@@ -464,7 +464,7 @@ bool FileOperator::deleteFile(std::string path)
      *                                       \           检查要删除的ContentItem是否是父目录内容的最后一个一个ContentItem-----------------------是
      *                                       \                                                                                             使父目录ContentItem的length减少8，并写回磁盘
      *                                       \                                                                                             检查此时父目录内容所占最后一块磁盘空间是否为空-----空
-     *                                       \                                                                                             \                                             把fat中父目录内容所占最后一块磁盘空间对应的项置为0，倒数第二块对应的项置为255，并把fat写回磁盘。
+     *                                       \                                                                                             \                                             把fat中父目录内容所占最后一块磁盘空间对应的项置为255，并把fat写回磁盘。
      *                                       \                                                                                             \                                             \
      *                                       \                                                                                             \                                             \
      *                                       \                                                                                             \                                             不空
@@ -474,7 +474,7 @@ bool FileOperator::deleteFile(std::string path)
      *                                       \                                                                                             不是
      *                                       \                                                                                             把最后一个ContentItem覆盖要删掉的此文件的ContentItem，把此块写回磁盘。
      *                                       \                                                                                             检查此时父目录内容所占最后一块磁盘空间是否为空-----------------------------空
-     *                                       \                                                                                                                                                                   把fat中父目录内容所占最后一块磁盘空间对应的项置为0，倒数第二块对应的项置为255，并把fat写回磁盘。
+     *                                       \                                                                                                                                                                   把fat中父目录内容所占最后一块磁盘空间对应的项置为255，并把fat写回磁盘。
      *                                       \                                                                                                                                                                   \
      *                                       \                                                                                                                                                                   \
      *                                       \                                                                                                                                                                   不空
@@ -532,7 +532,7 @@ bool FileOperator::deleteFile(std::string path)
         uint8_t t;
         while(index!=255){
             t = fat[index];
-            fat[index] = 0;
+            fat[index] = 255;
             index = t;
         }
     }
@@ -540,7 +540,7 @@ bool FileOperator::deleteFile(std::string path)
     {
         //找到父目录内容的最后一块ContentItem的位置
         uint8_t lastBlockIndex;
-        uint8_t t = folder.startPos;
+        uint8_t t = lastBlockIndex = folder.startPos;
         while(t!=255){
             lastBlockIndex = t;
             t = fat[t];
@@ -561,8 +561,8 @@ bool FileOperator::deleteFile(std::string path)
         //用最后一块ContentItem覆盖要删除的ContentItem，并写回磁盘
         if(!(lastBlockIndex==blockIndex && lastInnerIndex==innerIndex)){
             Block buff1,buff2;
-            buff1 = disk.readBlock(lastBlockIndex).some;
-            buff2 = disk.readBlock(blockIndex).some;
+            buff1 = disk.readBlock(lastBlockIndex);
+            buff2 = disk.readBlock(blockIndex);
             for(unsigned i = 0;i<8;++i){
                 buff2[innerIndex+i] =  buff1[lastInnerIndex+i];
             }
@@ -570,19 +570,8 @@ bool FileOperator::deleteFile(std::string path)
         }
         folder.length -= 8;
         //检查父目录内容中最后一块ContentItem被转移后，对应的磁盘空间
-        //是否还有内容，若没有，在fat中将其标记为空闲，倒数第二块对应的值
-        //置为255，最后将fat写回磁盘。
+        //是否还有内容，若没有，在fat中将其标记为空闲，最后将fat写回磁盘。
         if(folder.length % 64 == 0){
-            //寻找父目录所占原倒数第二块磁盘空间的位置
-            uint8_t secondLastBlockIndex;
-            {
-                uint8_t t = folder.startPos;
-                while(t!=lastBlockIndex){
-                    secondLastBlockIndex = t;
-                    t = fat[t];
-                }
-            }
-            fat[secondLastBlockIndex] = 255;
             fat[lastBlockIndex] = 0;
         }
     }
@@ -592,7 +581,7 @@ bool FileOperator::deleteFile(std::string path)
         Block buff;
         uint8_t folderBlockIndex, folderInnerIndex;
         std::tie(folderBlockIndex,folderInnerIndex) = findIndex(folderName);
-        buff = disk.readBlock(folderBlockIndex).some;
+        buff = disk.readBlock(folderBlockIndex);
         /***/
         qInfo()<<"in FileOperator::deleteFile";
         qInfo()<<"folderBlockIndex: "<<folderBlockIndex;
@@ -609,6 +598,10 @@ bool FileOperator::deleteFile(std::string path)
         /***/
         buff[folderInnerIndex+7] -= 8;
         disk.writeBlock(buff,folderBlockIndex);
+        /***/
+        qInfo()<<"in FileOperator::deleteFile";
+        qInfo()<<"buff[folderInnerIndex+7]: "<<buff[folderInnerIndex+7];
+        /***/
     }
 
     //把fat写回磁盘
@@ -621,5 +614,9 @@ bool FileOperator::deleteFile(std::string path)
             buff[i] = fat[64+i];
         disk.writeBlock(buff,1);
     }
+    /***/
+    qInfo()<<"in FileOperator::deleteFile";
+    qInfo()<<"here line 597 ";
+    /***/
     return true;
 }
