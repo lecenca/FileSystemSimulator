@@ -40,7 +40,7 @@ void MainWindow::createFile(std::string name,std::string type,uint8_t property)
 {
     bool createSuccrssfully = false;
     std::string path = folderPath + "/" + name;
-    if((property & 0b00000100) == NORMAL){
+    if((property & 0b00000100) == ContentItem::NORMAL){
         //创建文件
         path = path + "." + type;
         createSuccrssfully = fileOperator.createFile(path,property);
@@ -58,7 +58,7 @@ void MainWindow::createFile(std::string name,std::string type,uint8_t property)
 void MainWindow::refreshFolderDisplay()
 {
     try{
-        ui->pathLabel->setText(folderPath.data());
+        ui->pathBar->setText(folderPath.data());
         uint8_t buff[64];
         uint8_t readedCount;
         currentFolderContent.clear();
@@ -141,15 +141,47 @@ void MainWindow::on_actionCreateNew_triggered()
     createFileDialog->show();
 }
 
-bool MainWindow::deleteFile(std::string path)
-{
-    return fileOperator.deleteFile(path);
-}
-
-//右键菜单点击“删除”执行该函数
+//右键菜单点击“删除文件”执行该函数
 void MainWindow::on_actionDeleteFile_triggered()
 {
-    deleteFile(folderPath+"/"+seletedItemName);
+    fileOperator.deleteFile(folderPath+"/"+seletedItemName);
     refreshFolderDisplay();
 
+}
+
+//右键菜单点击“删除目录”执行该函数
+void MainWindow::on_actionDeleteFolder_triggered()
+{
+    fileOperator.rd(folderPath+"/"+seletedItemName);
+    refreshFolderDisplay();
+}
+
+//双击item执行该函数，双击文件时，以制度模式打开，双击目录时，进入该目录
+void MainWindow::on_listWidget_doubleClicked(const QModelIndex &index)
+{
+    //现在只实现双击打开文件夹的功能
+    QListWidgetItem* item = ui->listWidget->item(index.row());
+    /***/
+    qInfo()<<"in MainWindow::on_listWidget_doubleClicked";
+    qInfo()<<"double click on "<<item->text()<<" !";
+    /***/
+    if(item->text().length()==3){
+        //双击了文件夹，则进入该文件夹
+        intoFolder(item->text().toStdString());
+    }else{
+        //双击了文件，则以只读模式打开文件（待完成）
+    }
+}
+
+void MainWindow::intoFolder(std::string folderName)
+{
+    folderPath = folderPath + "/" + folderName;
+    refreshFolderDisplay();
+}
+
+//双击 “后退” 执行该函数
+void MainWindow::on_actionBack_triggered()
+{
+    folderPath = folderPath.substr(0,folderPath.length()-4);
+    refreshFolderDisplay();
 }

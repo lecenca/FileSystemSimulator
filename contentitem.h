@@ -13,6 +13,11 @@ public:
     uint8_t startPos; //起始位置
     uint8_t length;   //实验要求以盘块为单位，但这里选择以字节为单位。
 
+    static const uint8_t MENU = 0b00001000;
+    static const uint8_t NORMAL = 0b00000100;
+    static const uint8_t SYSTEM = 0b00000010;
+    static const uint8_t READONLY = 0b00000001;
+
     template<class Iter>
     static ContentItem convertToItem(Iter iter){
         ContentItem item;

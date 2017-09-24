@@ -22,7 +22,7 @@ private:
     void createFile(std::string name,std::string type,uint8_t property);
     void refreshFolderDisplay();
     std::string getCurrentFolderPath();
-    bool deleteFile(std::string path);
+    void intoFolder(std::string folderName);
 
 private slots:
 
@@ -32,11 +32,13 @@ private slots:
 
     void on_actionDeleteFile_triggered();
 
+    void on_actionDeleteFolder_triggered();
+
+    void on_listWidget_doubleClicked(const QModelIndex &index);
+
+    void on_actionBack_triggered();
+
 private:
-    static const uint8_t MENU = 0b00001000;
-    static const uint8_t NORMAL = 0b00000100;
-    static const uint8_t SYSTEM = 0b00000010;
-    static const uint8_t READONLY = 0b00000001;
 
     Ui::MainWindow *ui;
 

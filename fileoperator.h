@@ -32,6 +32,7 @@ public:
     bool writeFile(std::string path, uint8_t* buff, uint32_t length);
     bool closeFile(std::string path);
     bool deleteFile(std::string path);
+    bool rd(std::string path);
 
 private:
     uint8_t fat[128];
@@ -52,10 +53,10 @@ private:
     std::tuple<uint8_t,uint8_t> findIndex(std::string path);
     Option<uint8_t> findEmptyBlock();
     bool createNewFile(std::string path, uint8_t property);
+    bool deleteContent(ContentItem item);
 
-    Option<uint8_t> getNext(FileIter& iter);//读一个字节,并且文件指针后移一位；
+    Option<uint8_t> getNext(FileIter& iter);
     std::vector<std::string> split(std::string str, char delimiter);
-    FileIter getFile(ContentItem item);
 };
 
 #endif // FILEOPERATOR_H
