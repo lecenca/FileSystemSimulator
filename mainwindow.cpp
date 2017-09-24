@@ -182,6 +182,8 @@ void MainWindow::intoFolder(std::string folderName)
 //双击 “后退” 执行该函数
 void MainWindow::on_actionBack_triggered()
 {
-    folderPath = folderPath.substr(0,folderPath.length()-4);
-    refreshFolderDisplay();
+    if(folderPath!="rot"){
+        folderPath = folderPath.substr(0,folderPath.length()-4);
+        refreshFolderDisplay();
+    }
 }

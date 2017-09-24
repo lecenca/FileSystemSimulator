@@ -743,7 +743,7 @@ bool FileOperator::deleteContent(ContentItem item)
         //如果这个contentItem是文件夹的contentItem
         if(item.length==0)
             return true;
-         //读入这个目录的内容，并一一回收里面所分配的内存。
+         //读入这个文件夹的内容，并一一回收里面每个文件和文件夹所分配的磁盘空间。
         {
             uint8_t logicIndex = 0;
             uint8_t blockIndex = item.startPos;
@@ -764,6 +764,16 @@ bool FileOperator::deleteContent(ContentItem item)
             //删除
             for(ContentItem item: contentItemList){
                 deleteContent(item);
+            }
+        }
+        //回收这个文件夹所占有的磁盘空间
+        if(item.length!=0){
+            uint8_t blockIndex = item.startPos;
+            uint8_t next;
+            while(blockIndex!=255){
+                next = fat[blockIndex];
+                fat[blockIndex] = 0;
+                blockIndex = next;
             }
         }
     }
