@@ -38,6 +38,8 @@ private slots:
 
     void on_actionBack_triggered();
 
+    void on_writeModelOpen_triggered();
+
 private:
 
     Ui::MainWindow *ui;

@@ -31,7 +31,8 @@ SOURCES += \
     fileiter.cpp \
     openedlistitem.cpp \
     contentitem.cpp \
-    createfiledialog.cpp
+    createfiledialog.cpp \
+    textdialog.cpp
 
 HEADERS += \
         mainwindow.h \
@@ -41,11 +42,13 @@ HEADERS += \
     fileiter.h \
     openedlistitem.h \
     option.h \
-    createfiledialog.h
+    createfiledialog.h \
+    textdialog.h
 
 FORMS += \
         mainwindow.ui \
-    createfiledialog.ui
+    createfiledialog.ui \
+    textdialog.ui
 
 RESOURCES += \
     rec.qrc

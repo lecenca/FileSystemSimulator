@@ -52,11 +52,6 @@ bool FileOperator::openFile(std::string path,uint8_t property)
                     std::make_pair(
                         path,
                         OpenedListItem(path,result.some,property)));
-        /***/
-        qInfo()<<"in FileOperator::openFile";
-        qInfo()<<"item.length ="<<result.some.length;
-        /***/
-
         return true;
     }
     catch(std::exception e){
@@ -68,7 +63,14 @@ bool FileOperator::openFile(std::string path,uint8_t property)
 uint32_t FileOperator::readFile(std::string path, uint8_t *buff, uint32_t length)
 {
     try{
+        //检查文件是否打开
+        if(openedList.find(path)==openedList.end())
+            return false;
+
         OpenedListItem& openedItem = openedList.at(path);
+        //检查是否以读模式打开
+        if(openedItem.openModel==FileOperator::WRITEMODEL)
+            return false;
         FileIter& iter = openedItem.fileIter;
 
         /***/
@@ -112,12 +114,23 @@ Option<ContentItem> FileOperator::findFile(ContentItem folder, std::string& file
 
     bool isMenu = true;
     std::string typeName;
-    QRegExp reg(QString("^[^\\$\\./]{3}\\.[^\\$\\./]{2}$"));
-    if(reg.exactMatch(QString(fileName.data()))){
+
+    /***/
+    qInfo()<<"in FileOperator::findFile";
+    qInfo()<<"(before)fileName: "<<fileName.data();
+    qInfo()<<"(before)isMenu: "<<isMenu;
+    /***/
+
+    if(fileName.length()==6){
         typeName = fileName.substr(4,2);
         fileName = fileName.substr(0,3);
         isMenu = false;
     }
+    /***/
+    qInfo()<<"in FileOperator::findFile";
+    qInfo()<<"(after)fileName: "<<fileName.data();
+    qInfo()<<"(after)isMenu: "<<isMenu;
+    /***/
 
     Block block = disk.readBlock(folder.startPos).some;
     uint8_t blockIndex = folder.startPos;
@@ -136,13 +149,20 @@ Option<ContentItem> FileOperator::findFile(ContentItem folder, std::string& file
         std::string type;
         type.append(1,(char)block.at(innerIndex+3));
         type.append(1,(char)block.at(innerIndex+4));
-        if(fileName==name && (isMenu || (!isMenu && typeName==type))){
+        uint8_t property = block.at(innerIndex+5);
+        if(fileName==name &&
+                (isMenu &&  property == ContentItem::MENU ||
+                 (!isMenu && (property == ContentItem::NORMAL) && typeName==type))){
             auto iter = block.begin();
             std::advance(iter,innerIndex);
             ContentItem item = ContentItem::convertToItem(iter);
             return Option<ContentItem>(item);
         }
     }
+    /***/
+    qInfo()<<"in FileOperator::findFile";
+    qInfo()<<"here 165";
+    /***/
     return Option<ContentItem>();
 }
 
@@ -413,12 +433,16 @@ std::tuple<uint8_t,uint8_t> FileOperator::findIndex(std::string path)
         }
 
         std::string name, type;
+        uint8_t property;
         name.append(1,(char)block.at(innerIndex));
         name.append(1,(char)block.at(innerIndex+1));
         name.append(1,(char)block.at(innerIndex+2));
         type.append(1,(char)block.at(innerIndex+3));
         type.append(1,(char)block.at(innerIndex+4));
-        if(fileName==name && (isMenu || (!isMenu && type==typeName))){
+        property = block.at(innerIndex+5);
+        if(fileName==name &&
+                (isMenu &&  property == ContentItem::MENU ||
+                 (!isMenu && (property == ContentItem::NORMAL) && typeName==type))){
             return std::make_tuple((uint8_t)blockIndex,(uint8_t)innerIndex);
         }
     }
@@ -778,5 +802,145 @@ bool FileOperator::deleteContent(ContentItem item)
         }
     }
     //修改过的fat需要写回磁盘，但不在这里写，在FileOperator::rd中写
+    return true;
+}
+
+bool FileOperator::writeFile(std::string path, uint8_t *buff, uint32_t length)
+{
+    /**
+      *检查参数是否正确
+      *    不正确：（写入失败）
+      *    正确：检查文件是否存在
+      *         不存在：（写入失败）
+      *         存在：找出足够的磁盘空间
+      *              空间不够：（写入失败）
+      *              空间够：查看文件最后一块盘块是否满
+      *                     满或源文件内容为空：从新盘块写起
+      *                                      调整fat，并把调整的fat写回磁盘。
+      *                                      修改此文件ContentItem的length，
+      *                                      若该文件原本内容为空，则还要修改startPos
+      *                     未满：从文件所占的最后一块盘块的空闲位置写起
+      *                          调整fat，并把调整的fat写回磁盘。
+      *
+      */
+    //检查参数是否正确
+    QRegExp reg(QString("^rot(/[^\\$\\./]{3})*(/[^\\$\\./]{3}\\.[^\\$\\./]{2})$"));
+    if(!reg.exactMatch(QString(path.data())))
+        return false;
+    //检查文件是否存在
+    Option<ContentItem> result = findContentItem(path);
+    if(result.none)
+        return false;
+    //检查文件是否打开
+    if(openedList.find(path)==openedList.end())
+        return false; //文件未打开
+    ContentItem file = result.some;
+    //检查文件是否以写模式打开
+    if(openedList.at(path).openModel==FileOperator::READMODEL)
+        return false;
+    ContentItem modifiedFile = file;
+    //检查空间是否够
+    {
+        uint8_t requiredSize = length;
+        if(file.length % 64 != 0){
+            requiredSize -= (64 - (file.length % 64));
+        }
+        uint8_t requiredBlockNum = requiredSize / 64;
+        uint8_t count = 0;
+        bool haveEnoughBlock = false;
+        for(uint8_t blockIndex = 3;blockIndex<128;++blockIndex){
+            if(fat[blockIndex]==0)
+                ++count;
+            if(count==requiredBlockNum){
+                haveEnoughBlock = true;
+                break;
+            }
+        }
+        if(!haveEnoughBlock)
+            return false; //空间不够
+        modifiedFile.length += length;
+    }
+    //写入
+    {
+        uint32_t buffIndex = 0;
+        uint32_t tLength = length;
+        uint8_t lastBlockIndex;  //此文件所占随后一个盘块的Index
+        uint8_t t = file.startPos;
+        if(file.length > 0){
+            //文件不为空
+            while(t!=255){
+                lastBlockIndex = t;
+                t = fat[t];
+            }
+        }
+        if(file.length % 64 != 0){
+            //文件不为空且最后一块不满
+            //找出文件所占的最后一块盘块
+            //先写满最后一块盘块
+            unsigned surplusSpaceSize = 64 - (file.length % 64); //最后一块剩余容量
+            if(length >= surplusSpaceSize){
+                uint8_t lastBlockInnerIndex = file.length % 64;
+                Block lastBlock = disk.readBlock(lastBlockIndex).some;
+                for(unsigned i = 1;i<surplusSpaceSize;++i){
+                    lastBlock[lastBlockInnerIndex] = buff[buffIndex];
+                    ++lastBlockInnerIndex;
+                    ++buffIndex;
+                }
+                disk.writeBlock(lastBlock,lastBlockIndex);
+            }
+            tLength -= surplusSpaceSize;
+        }
+        //把剩下的写到新盘块里
+        {
+            Block tBlock;
+            uint8_t head, tail;
+            if(tLength!=0){
+                head = tail = findEmptyBlock().some;
+            }
+            while(tLength!=0){
+                uint8_t emptyBlockIndex = findEmptyBlock().some;
+                if(tLength >= 64) {
+                    for(unsigned i = 0;i<64;++i)
+                        tBlock[i] = buff[buffIndex + i];
+                    tLength -= 64;
+                }else {
+                    for(unsigned i =0;i<tLength;++i)
+                        tBlock[i] = buff[buffIndex + i];
+                    tLength = 0;
+                }
+                disk.writeBlock(tBlock,emptyBlockIndex); //写入磁盘
+                //修改fat
+                fat[tail] = emptyBlockIndex;
+                fat[emptyBlockIndex] = 255;
+                tail = emptyBlockIndex;
+            }
+            if(file.length==0){
+                modifiedFile.startPos = head;
+            }else{
+                fat[lastBlockIndex] = head;
+            }
+        }
+        //把fat写回磁盘
+        {
+            Block block;
+            for(unsigned i = 0;i<64;++i)
+                block[i] = fat[i];
+            disk.writeBlock(block,0);
+            for(unsigned i = 0;i<64;++i)
+                block[i] = fat[64 + i];
+            disk.writeBlock(block,1);
+        }
+        //把修改的此文件的ContentItem写回磁盘
+        {
+            Block block;
+            uint8_t blockIndex,innerIndex;
+            std::tie(blockIndex,innerIndex) = findIndex(path);
+            block = disk.readBlock(blockIndex).some;
+            auto arr = modifiedFile.toUint8Array();
+            for(unsigned i = 0;i<8;++i)
+                block[innerIndex + i] = arr[i];
+            disk.writeBlock(block,blockIndex);
+        }
+    }
     return true;
 }

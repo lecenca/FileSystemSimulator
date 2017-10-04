@@ -34,13 +34,15 @@ public:
     bool deleteFile(std::string path);
     bool rd(std::string path);
 
+public:
+    static const uint8_t READMODEL = 0b00000000;
+    static const uint8_t WRITEMODEL = 0b00000001;
+
+
 private:
     uint8_t fat[128];
     Disk disk;
     std::map<std::string,OpenedListItem> openedList;
-
-//    ContentItem rootItem;
-
 
     std::vector<ContentItem> currentFolder;
 

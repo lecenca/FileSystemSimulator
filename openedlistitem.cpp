@@ -1,7 +1,7 @@
 #include "openedlistitem.h"
 
-OpenedListItem::OpenedListItem(std::string path, ContentItem item, uint8_t property):
-    path(path),item(item),flag(property)
+OpenedListItem::OpenedListItem(std::string path, ContentItem item, uint8_t openModel):
+    path(path),item(item),openModel(openModel)
 {
     fileIter.blockIndex = item.startPos;
     fileIter.innerIndex = 0;

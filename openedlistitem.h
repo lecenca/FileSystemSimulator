@@ -9,12 +9,12 @@
 class OpenedListItem
 {
 public:
-    OpenedListItem(std::string path,ContentItem item,uint8_t property);
+    OpenedListItem(std::string path, ContentItem item, uint8_t openModel);
 
 public:
     std::string path; //文件名
     ContentItem item;
-    uint8_t flag; //操作类型，0表示读，1表示写
+    uint8_t openModel; //操作类型，0表示读，1表示写
     FileIter fileIter;
 };
 

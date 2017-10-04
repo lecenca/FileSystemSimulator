@@ -107,6 +107,16 @@
     <string>删除目录</string>
    </property>
   </action>
+  <action name="readModelOpen">
+   <property name="text">
+    <string>以只读模式打开</string>
+   </property>
+  </action>
+  <action name="writeModelOpen">
+   <property name="text">
+    <string>以写模式打开</string>
+   </property>
+  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <resources/>

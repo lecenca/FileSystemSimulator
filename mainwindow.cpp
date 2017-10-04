@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "createfiledialog.h"
+#include "textdialog.h"
 
 #include <QtDebug>
 
@@ -120,11 +121,13 @@ void MainWindow::on_listWidget_customContextMenuRequested(const QPoint &pos)
         menu->addAction(ui->actionCreateNew);
     }else{
         seletedItemName = item->text().toStdString();
-        QRegExp reg(QString("^([^\\$\\./]{3})\\.(([^\\$\\./]){2})$"));
-        QString name = item->text();
-        if(reg.exactMatch(name)){
+        if(seletedItemName.length()==6){
+            //右键点击了文件
+            menu->addAction(ui->readModelOpen);
+            menu->addAction(ui->writeModelOpen);
             menu->addAction(ui->actionDeleteFile);
         }else{
+            //右键点击了目录
             menu->addAction(ui->actionDeleteFolder);
         }
     }
@@ -170,6 +173,9 @@ void MainWindow::on_listWidget_doubleClicked(const QModelIndex &index)
         intoFolder(item->text().toStdString());
     }else{
         //双击了文件，则以只读模式打开文件（待完成）
+        fileOperator.openFile(item->text().toStdString(),FileOperator::READMODEL);
+        TextDialog* textDialog = new TextDialog(this);
+        textDialog->show();
     }
 }
 
@@ -186,4 +192,12 @@ void MainWindow::on_actionBack_triggered()
         folderPath = folderPath.substr(0,folderPath.length()-4);
         refreshFolderDisplay();
     }
+}
+
+//点击右键中的 “以写模式打开” 运行此函数
+void MainWindow::on_writeModelOpen_triggered()
+{
+    fileOperator.openFile(seletedItemName,FileOperator::WRITEMODEL);
+    TextDialog* textDialog = new TextDialog(this);
+    textDialog->show();
 }
