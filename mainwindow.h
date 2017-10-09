@@ -45,7 +45,7 @@ private:
     Ui::MainWindow *ui;
 
     std::string seletedItemName; //右键点击选择的项的名字
-    FileOperator fileOperator;
+    FileOperator* fileOperator;
     std::string folderPath;//当前文件夹的路径
     std::vector<ContentItem> currentFolderContent;//当前文件夹的内容
 };

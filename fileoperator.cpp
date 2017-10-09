@@ -7,14 +7,22 @@
 
 //文件打开都没关，记得关。
 
+FileOperator FileOperator::instance{};
+
 FileOperator::FileOperator()
 {
+
     Block blk0 = disk.readBlock(0).some;
     Block blk1 = disk.readBlock(1).some;
     for(unsigned i = 0;i<64;++i){
         fat[i] = blk0[i];
         fat[64+i] = blk1[i];
     }
+}
+
+FileOperator* FileOperator::getInstance()
+{
+    return &FileOperator::instance;
 }
 
 ContentItem FileOperator::getRootItem()
@@ -32,22 +40,13 @@ ContentItem FileOperator::getRootItem()
     return rootItem;
 }
 
-
-
 bool FileOperator::openFile(std::string path,uint8_t property)
 {
     try{
         Option<ContentItem> result = findContentItem(path);
-
         if(result.none){
             return false;
         }
-        /***/
-        qInfo()<<"in FileOperator::openFile";
-        qInfo()<<"here line 47";
-        for(unsigned i = 0;i<8;++i)
-            qInfo()<<result.some.toUint8Array()[i];
-        /***/
         openedList.insert(
                     std::make_pair(
                         path,
@@ -63,29 +62,57 @@ bool FileOperator::openFile(std::string path,uint8_t property)
 uint32_t FileOperator::readFile(std::string path, uint8_t *buff, uint32_t length)
 {
     try{
+        //检查参数是否正确
+        /***/
+        qInfo()<<"in FileOperator::readFile";
+        qInfo()<<"path: "<<QString(path.data());
+        qInfo()<<"000\n";
+        /***/
+        if(!checkName(path))
+            return 0;
+        /***/
+        qInfo()<<"in FileOperator::readFile";
+        qInfo()<<"001\n";
+        /***/
         //检查文件是否打开
         if(openedList.find(path)==openedList.end())
-            return false;
-
+            return 0;
+        /***/
+        qInfo()<<"in FileOperator::readFile";
+        qInfo()<<"002\n";
+        /***/
         OpenedListItem& openedItem = openedList.at(path);
         //检查是否以读模式打开
         if(openedItem.openModel==FileOperator::WRITEMODEL)
-            return false;
+            return 0;
         FileIter& iter = openedItem.fileIter;
 
         /***/
         qInfo()<<"in FileOperator::readFile";
-        qInfo()<<"logicIndex: "<<iter.logicIndex;
-        qInfo()<<"blockIndex: "<<iter.blockIndex;
-        qInfo()<<"innerIndex: "<<iter.innerIndex;
-        qInfo()<<"iter.length: "<<iter.length;
+        qInfo()<<"003\n";
         /***/
 
         //指定的读出长度比文件剩余长度长，则只读剩余长度的的数据。
+        /***/
+        qInfo()<<"in FileOperator::readFile";
+        qInfo()<<"iter.blockIndex: "<<iter.blockIndex;
+        qInfo()<<"iter.innerIndex: "<<iter.innerIndex;
+        qInfo()<<"iter.logicIndex: "<<iter.logicIndex;
+        qInfo()<<"iter.length: "<<iter.length;
+        qInfo()<<"length: "<<length<<"\n";
+        /***/
         if(iter.length-iter.logicIndex<length)
             length = iter.length - iter.logicIndex;
         uint8_t endIndex = iter.logicIndex + length;
         uint8_t buffIndex = 0;
+        /***/
+        qInfo()<<"in FileOperator::readFile";
+        qInfo()<<"iter.blockIndex: "<<iter.blockIndex;
+        qInfo()<<"iter.innerIndex: "<<iter.innerIndex;
+        qInfo()<<"iter.logicIndex: "<<iter.logicIndex;
+        qInfo()<<"iter.length: "<<iter.length;
+        qInfo()<<"length: "<<length<<"\n";
+        /***/
         while(iter.logicIndex < endIndex){
             auto result = getNext(iter);
             if(result.none)
@@ -115,22 +142,11 @@ Option<ContentItem> FileOperator::findFile(ContentItem folder, std::string& file
     bool isMenu = true;
     std::string typeName;
 
-    /***/
-    qInfo()<<"in FileOperator::findFile";
-    qInfo()<<"(before)fileName: "<<fileName.data();
-    qInfo()<<"(before)isMenu: "<<isMenu;
-    /***/
-
     if(fileName.length()==6){
         typeName = fileName.substr(4,2);
         fileName = fileName.substr(0,3);
         isMenu = false;
     }
-    /***/
-    qInfo()<<"in FileOperator::findFile";
-    qInfo()<<"(after)fileName: "<<fileName.data();
-    qInfo()<<"(after)isMenu: "<<isMenu;
-    /***/
 
     Block block = disk.readBlock(folder.startPos).some;
     uint8_t blockIndex = folder.startPos;
@@ -159,10 +175,6 @@ Option<ContentItem> FileOperator::findFile(ContentItem folder, std::string& file
             return Option<ContentItem>(item);
         }
     }
-    /***/
-    qInfo()<<"in FileOperator::findFile";
-    qInfo()<<"here 165";
-    /***/
     return Option<ContentItem>();
 }
 
@@ -365,6 +377,7 @@ Option<ContentItem> FileOperator::findContentItem(std::string path)
     std::vector<std::string> pathVec = split(path,'/');
     ContentItem file = getRootItem();
     Option<ContentItem> result;
+
     pathVec.erase(pathVec.begin());
     for(auto str: pathVec){
         result = findFile(file, str);
@@ -412,11 +425,6 @@ std::tuple<uint8_t,uint8_t> FileOperator::findIndex(std::string path)
         fileName = path.substr(path.length()-3,3);
     }
     auto result = findContentItem(folderPath);
-    /***/
-    qInfo()<<"in FileOperator::findIndex";
-    qInfo()<<"folderPath: "<<folderPath.data();
-    qInfo()<<"fileName: "<<fileName.data();
-    /***/
     if(result.none)
         return std::make_tuple((uint8_t)255,(uint8_t)255);
     ContentItem folder = result.some;
@@ -839,6 +847,9 @@ bool FileOperator::writeFile(std::string path, uint8_t *buff, uint32_t length)
     if(openedList.at(path).openModel==FileOperator::READMODEL)
         return false;
     ContentItem modifiedFile = file;
+    //检查是否超出文件最大允许大小
+    if(file.length + length >= 255)
+        return false;
     //检查空间是否够
     {
         uint8_t requiredSize = length;
@@ -860,65 +871,94 @@ bool FileOperator::writeFile(std::string path, uint8_t *buff, uint32_t length)
             return false; //空间不够
         modifiedFile.length += length;
     }
+    /***/
+    qInfo()<<"in FileOperator::writeFile";
+    qInfo()<<"001";
+    /***/
     //写入
     {
         uint32_t buffIndex = 0;
-        uint32_t tLength = length;
+        uint32_t tLength = length; //当前剩下的没写的数据的长度
         uint8_t lastBlockIndex;  //此文件所占随后一个盘块的Index
-        uint8_t t = file.startPos;
+
         if(file.length > 0){
             //文件不为空
+            uint8_t t = file.startPos;
             while(t!=255){
                 lastBlockIndex = t;
                 t = fat[t];
             }
         }
-        if(file.length % 64 != 0){
+        /***/
+        qInfo()<<"in FileOperator::writeFile";
+        qInfo()<<"002";
+        /***/
+        if(file.length > 0 && file.length % 64 != 0){
             //文件不为空且最后一块不满
             //找出文件所占的最后一块盘块
             //先写满最后一块盘块
             unsigned surplusSpaceSize = 64 - (file.length % 64); //最后一块剩余容量
-            if(length >= surplusSpaceSize){
-                uint8_t lastBlockInnerIndex = file.length % 64;
-                Block lastBlock = disk.readBlock(lastBlockIndex).some;
-                for(unsigned i = 1;i<surplusSpaceSize;++i){
+            uint8_t lastBlockInnerIndex = file.length % 64;
+            Block lastBlock = disk.readBlock(lastBlockIndex).some;
+            if(tLength >= surplusSpaceSize){
+                //数据剩余长度大于等于最后一块磁盘剩余空间
+                for(unsigned i = 1;i<=surplusSpaceSize;++i){
                     lastBlock[lastBlockInnerIndex] = buff[buffIndex];
                     ++lastBlockInnerIndex;
                     ++buffIndex;
                 }
-                disk.writeBlock(lastBlock,lastBlockIndex);
+                tLength -= surplusSpaceSize;
+            }else{
+                //数据剩余长度小于最后一块磁盘剩余空间
+                for(unsigned i = 1;i<=tLength;++i){
+                    lastBlock[lastBlockInnerIndex] = buff[buffIndex];
+                    ++lastBlockInnerIndex;
+                    ++buffIndex;
+                }
+                tLength = 0;
             }
-            tLength -= surplusSpaceSize;
+            disk.writeBlock(lastBlock,lastBlockIndex);
+            /***/
+            qInfo()<<"in FileOperator::writeFile";
+            qInfo()<<"003";
+            /***/
         }
         //把剩下的写到新盘块里
         {
             Block tBlock;
             uint8_t head, tail;
             if(tLength!=0){
+                //要写的数据有剩
                 head = tail = findEmptyBlock().some;
-            }
-            while(tLength!=0){
-                uint8_t emptyBlockIndex = findEmptyBlock().some;
-                if(tLength >= 64) {
-                    for(unsigned i = 0;i<64;++i)
-                        tBlock[i] = buff[buffIndex + i];
-                    tLength -= 64;
-                }else {
-                    for(unsigned i =0;i<tLength;++i)
-                        tBlock[i] = buff[buffIndex + i];
-                    tLength = 0;
+                while(tLength!=0){
+                    uint8_t emptyBlockIndex = findEmptyBlock().some;
+                    if(tLength >= 64) {
+                        for(unsigned i = 0;i<64;++i,++buffIndex)
+                            tBlock[i] = buff[buffIndex];
+                        tLength -= 64;
+                    }else {
+                        for(unsigned i =0;i<tLength;++i,++buffIndex)
+                            tBlock[i] = buff[buffIndex];
+                        tLength = 0;
+                    }
+                    disk.writeBlock(tBlock,emptyBlockIndex); //写入磁盘
+                    //修改fat
+                    fat[tail] = emptyBlockIndex;
+                    fat[emptyBlockIndex] = 255;
+                    tail = emptyBlockIndex;
                 }
-                disk.writeBlock(tBlock,emptyBlockIndex); //写入磁盘
-                //修改fat
-                fat[tail] = emptyBlockIndex;
-                fat[emptyBlockIndex] = 255;
-                tail = emptyBlockIndex;
+                if(file.length==0){
+                    //如果文件一开始内容为空，则head所指的盘块是第一块
+                    modifiedFile.startPos = head;
+                }else{
+                    //如果文件一开始不为空，则head所指的盘块接在原来文件的最后一块后面
+                    fat[lastBlockIndex] = head;
+                }
             }
-            if(file.length==0){
-                modifiedFile.startPos = head;
-            }else{
-                fat[lastBlockIndex] = head;
-            }
+            /***/
+            qInfo()<<"in FileOperator::writeFile";
+            qInfo()<<"004";
+            /***/
         }
         //把fat写回磁盘
         {

@@ -23,7 +23,6 @@ using Name = std::array<uint8_t,3>;
 class FileOperator
 {
 public:
-    FileOperator();
 
     bool createFile(std::string path, uint8_t property);
     bool md(std::string path, uint8_t property);
@@ -35,18 +34,25 @@ public:
     bool rd(std::string path);
 
 public:
+    static FileOperator* getInstance();
+
+public:
     static const uint8_t READMODEL = 0b00000000;
     static const uint8_t WRITEMODEL = 0b00000001;
 
 
 private:
+    static FileOperator instance;
+
+private:
     uint8_t fat[128];
     Disk disk;
     std::map<std::string,OpenedListItem> openedList;
-
-    std::vector<ContentItem> currentFolder;
+//    std::vector<ContentItem> currentFolder;
 
 private:
+    FileOperator();
+
     ContentItem getRootItem();
     void openFolder(ContentItem item);
     Option<ContentItem> findContentItem(std::string path);

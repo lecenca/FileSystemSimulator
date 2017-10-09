@@ -13,6 +13,7 @@ MainWindow::MainWindow(QWidget *parent) :
         ui->setupUi(this);
         setFixedSize(this->width(),this->height());
         folderPath = "rot";
+        fileOperator = FileOperator::getInstance();
         refreshFolderDisplay();
 
         /***/
@@ -44,10 +45,10 @@ void MainWindow::createFile(std::string name,std::string type,uint8_t property)
     if((property & 0b00000100) == ContentItem::NORMAL){
         //创建文件
         path = path + "." + type;
-        createSuccrssfully = fileOperator.createFile(path,property);
+        createSuccrssfully = fileOperator->createFile(path,property);
     }else{
         //创建目录
-        createSuccrssfully = fileOperator.md(path,property);
+        createSuccrssfully = fileOperator->md(path,property);
     }
     //若创建成功，刷新当前文件夹显示
     if(createSuccrssfully)
@@ -59,19 +60,27 @@ void MainWindow::createFile(std::string name,std::string type,uint8_t property)
 void MainWindow::refreshFolderDisplay()
 {
     try{
+        /***/
+        qInfo()<<"in MainWindow::refreshFolderDisplay";
+        qInfo()<<"001\n";
+        /***/
         ui->pathBar->setText(folderPath.data());
         uint8_t buff[64];
-        uint8_t readedCount;
         currentFolderContent.clear();
-        if(!fileOperator.openFile(folderPath,0)){
+        if(!(fileOperator->openFile(folderPath,FileOperator::READMODEL))){
             //打开失败
             qInfo()<<"break in MainWindow::refreshFolderDisplay";
-            qInfo()<<"open folderPath false, this should not happen";
+            qInfo()<<"open folderPath false, this should not happen\n";
             throw std::exception();
         }
+        /***/
+        qInfo()<<"in MainWindow::refreshFolderDisplay";
+        qInfo()<<"002\n";
+        /***/
+        uint8_t readedCount;
         for(;;){
             //把当前文件夹内容放入currentFolderContent
-            readedCount = fileOperator.readFile(folderPath,buff,64);
+            readedCount = fileOperator->readFile(folderPath,buff,64);
             if(readedCount==0)
                 break;
             for(unsigned i = 0;i<readedCount;i+=8){
@@ -99,7 +108,7 @@ void MainWindow::refreshFolderDisplay()
                                 ui->listWidget));
             }
         }
-        fileOperator.closeFile(folderPath);
+        fileOperator->closeFile(folderPath);
     }
     catch(std::out_of_range e){
         qInfo()<<"break in MainWindow::refreshFolderDisplay";
@@ -147,7 +156,7 @@ void MainWindow::on_actionCreateNew_triggered()
 //右键菜单点击“删除文件”执行该函数
 void MainWindow::on_actionDeleteFile_triggered()
 {
-    fileOperator.deleteFile(folderPath+"/"+seletedItemName);
+    fileOperator->deleteFile(folderPath+"/"+seletedItemName);
     refreshFolderDisplay();
 
 }
@@ -155,7 +164,7 @@ void MainWindow::on_actionDeleteFile_triggered()
 //右键菜单点击“删除目录”执行该函数
 void MainWindow::on_actionDeleteFolder_triggered()
 {
-    fileOperator.rd(folderPath+"/"+seletedItemName);
+    fileOperator->rd(folderPath+"/"+seletedItemName);
     refreshFolderDisplay();
 }
 
@@ -164,17 +173,14 @@ void MainWindow::on_listWidget_doubleClicked(const QModelIndex &index)
 {
     //现在只实现双击打开文件夹的功能
     QListWidgetItem* item = ui->listWidget->item(index.row());
-    /***/
-    qInfo()<<"in MainWindow::on_listWidget_doubleClicked";
-    qInfo()<<"double click on "<<item->text()<<" !";
-    /***/
     if(item->text().length()==3){
         //双击了文件夹，则进入该文件夹
         intoFolder(item->text().toStdString());
     }else{
-        //双击了文件，则以只读模式打开文件（待完成）
-        fileOperator.openFile(item->text().toStdString(),FileOperator::READMODEL);
-        TextDialog* textDialog = new TextDialog(this);
+        //双击了文件，则以只读模式打开文件
+        TextDialog* textDialog = new TextDialog(folderPath + "/" + item->text().toStdString(),
+                                                FileOperator::READMODEL,
+                                                this);
         textDialog->show();
     }
 }
@@ -185,7 +191,7 @@ void MainWindow::intoFolder(std::string folderName)
     refreshFolderDisplay();
 }
 
-//双击 “后退” 执行该函数
+//单击 “后退” 执行该函数
 void MainWindow::on_actionBack_triggered()
 {
     if(folderPath!="rot"){
@@ -197,7 +203,6 @@ void MainWindow::on_actionBack_triggered()
 //点击右键中的 “以写模式打开” 运行此函数
 void MainWindow::on_writeModelOpen_triggered()
 {
-    fileOperator.openFile(seletedItemName,FileOperator::WRITEMODEL);
-    TextDialog* textDialog = new TextDialog(this);
+    TextDialog* textDialog = new TextDialog(folderPath + "/" + seletedItemName, FileOperator::WRITEMODEL, this);
     textDialog->show();
 }
