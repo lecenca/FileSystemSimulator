@@ -67,7 +67,7 @@ void MainWindow::refreshFolderDisplay()
         /***/
         ui->pathBar->setText(folderPath.data());
         uint8_t buff[64];
-        currentFolderContent.clear();
+        currentFolderContents.clear();
         if(!(fileOperator->openFile(folderPath,FileOperator::READMODEL))){
             //打开失败
             qInfo()<<"break in MainWindow::refreshFolderDisplay";
@@ -80,58 +80,46 @@ void MainWindow::refreshFolderDisplay()
         /***/
         uint8_t readedCount;
         for(;;){
-            //把当前文件夹内容放入currentFolderContent
-            readedCount = fileOperator->readFile(folderPath,buff,64);
-            if(readedCount==0)
-                break;
-            for(unsigned i = 0;i<readedCount;i+=8){
-                currentFolderContent.push_back(ContentItem::convertToItem(buff+i));
-            }
             /***/
             qInfo()<<"in MainWindow::refreshFolderDisplay";
             qInfo()<<"readCount ="<<readedCount;
             /***/
-//            readedCount = fileOperator->readFile(folderPath,buff,64);
-//            if(readedCount==0)
-//                break;
-//            for(unsigned i = 0;i<readedCount;i+=8){
-//                ContentItem item;
-//                std::string name;
-//                item = ContentItem::convertToItem(buff+i);
-//                name.push_back((char)item.name[0]);
-//                name.push_back((char)item.name[1]);
-//                name.push_back((char)item.name[2]);
-//                if((item.property&ContentItem::MENU)!=ContentItem::MENU){
-//                    name.push_back('.');
-//                    name.push_back((char)item.type[0]);
-//                    name.push_back((char)item.type[1]);
-//                }
-//                currentFolderContents.insert(std::make_pair(name,item));
-//            }
+            readedCount = fileOperator->readFile(folderPath,buff,64);
+            if(readedCount==0)
+                break;
+            for(unsigned i = 0;i<readedCount;i+=8){
+                ContentItem item;
+                std::string name;
+                item = ContentItem::convertToItem(buff+i);
+                name.push_back((char)item.name[0]);
+                name.push_back((char)item.name[1]);
+                name.push_back((char)item.name[2]);
+                if((item.property&ContentItem::MENU)!=ContentItem::MENU){
+                    name.push_back('.');
+                    name.push_back((char)item.type[0]);
+                    name.push_back((char)item.type[1]);
+                }
+                currentFolderContents.insert(std::make_pair(name,item));
+            }
         }
         //将currentFolderContent的内容重新显示在listWidge上
         ui->listWidget->clear();
-        for(ContentItem item: currentFolderContent){
-            if((item.property & 0b00001000) == 0b00001000){
+        for(auto iter = currentFolderContents.begin();iter!=currentFolderContents.end();++iter){
+            if(iter->first.length()==3){
                 ui->listWidget->addItem(
                             new QListWidgetItem(
                                 QIcon(":/image/folder.ico"),
-                                QString(QByteArray((char*)item.name,3)),
+                                QString(iter->first.data()),
                                 ui->listWidget));
             }else{
                 ui->listWidget->addItem(
                             new QListWidgetItem(
                                 QIcon(":/image/file.png"),
-                                QString(QByteArray((char*)item.name,3)+"."+QByteArray((char*)item.type,2)),
+                                QString(iter->first.data()),
                                 ui->listWidget));
             }
         }
         fileOperator->closeFile(folderPath);
-    }
-    catch(std::out_of_range e){
-        qInfo()<<"break in MainWindow::refreshFolderDisplay";
-        qInfo()<<"catch a out_of_range exception in MainWindow::refreshFolderDisplay";
-        throw e;
     }
     catch(std::exception e){
         qInfo()<<"break in MainWindow::refreshFolderDisplay";
@@ -238,6 +226,18 @@ void MainWindow::on_readModelOpen_triggered()
 //点击右键菜单“修改属性”运行此函数
 void MainWindow::on_actionChangeProperty_triggered()
 {
-    ChangePropertyDialog *changePropertyDialog = new ChangePropertyDialog(this);
+    auto item = currentFolderContents.at(seletedItemName);
+    ChangePropertyDialog *changePropertyDialog = new ChangePropertyDialog(seletedItemName,item.property,this);
+    connect(changePropertyDialog,ChangePropertyDialog::changeProperty,
+                this,MainWindow::changeProperty);
     changePropertyDialog->show();
+
+}
+
+void MainWindow::changeProperty(std::string name, uint8_t property)
+{
+    std::string path;
+    path = folderPath + "/" + name;
+    fileOperator->change(path,property);
+    refreshFolderDisplay();
 }

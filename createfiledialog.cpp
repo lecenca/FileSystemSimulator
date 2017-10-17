@@ -25,13 +25,10 @@ void CreateFileDialog::on_OKButton_clicked()
     QString type = ui->typeEdit->text();
     QString kind = ui->comboBox->currentText();
 
-    if(name.length())
-
-    /***/
-    qInfo()<<"in CreateFileDialog::on_OKButton_clicked";
-    qInfo()<<name<<type<<kind;
-    /***/
-
+    if(name.length()!=3)
+        return;
+    if(kind==QString("文件") && type.length()!=2)
+        return;
     uint8_t property = kind==QString("文件")?0b00000000:ContentItem::MENU;
     if(ui->nomal->isChecked())
         property = property|ContentItem::NORMAL;

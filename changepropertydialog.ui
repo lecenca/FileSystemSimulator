@@ -13,7 +13,7 @@
   <property name="windowTitle">
    <string>Dialog</string>
   </property>
-  <widget class="QPushButton" name="pushButton">
+  <widget class="QPushButton" name="OKButton">
    <property name="geometry">
     <rect>
      <x>30</x>
@@ -31,7 +31,7 @@
     <string>确定</string>
    </property>
   </widget>
-  <widget class="QPushButton" name="pushButton_2">
+  <widget class="QPushButton" name="discard">
    <property name="geometry">
     <rect>
      <x>160</x>
@@ -49,7 +49,7 @@
     <string>取消</string>
    </property>
   </widget>
-  <widget class="QCheckBox" name="checkBox">
+  <widget class="QCheckBox" name="normal">
    <property name="geometry">
     <rect>
      <x>60</x>
@@ -62,7 +62,7 @@
     <string>普通文件</string>
    </property>
   </widget>
-  <widget class="QCheckBox" name="checkBox_2">
+  <widget class="QCheckBox" name="system">
    <property name="geometry">
     <rect>
      <x>60</x>
@@ -75,7 +75,7 @@
     <string>系统文件</string>
    </property>
   </widget>
-  <widget class="QCheckBox" name="checkBox_3">
+  <widget class="QCheckBox" name="readOnly">
    <property name="geometry">
     <rect>
      <x>60</x>

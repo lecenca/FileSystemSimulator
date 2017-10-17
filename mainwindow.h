@@ -24,6 +24,7 @@ private:
     void refreshFolderDisplay();
     std::string getCurrentFolderPath();
     void intoFolder(std::string folderName);
+    void changeProperty(std::string name,uint8_t property);
 
 private slots:
 
@@ -52,8 +53,7 @@ private:
     std::string seletedItemName; //右键点击选择的项的名字
     FileOperator* fileOperator;
     std::string folderPath;//当前文件夹的路径
-    std::vector<ContentItem> currentFolderContent;//当前文件夹的内容
-    //std::map<std::string,ContentItem> currentFolderContents;
+    std::map<std::string,ContentItem> currentFolderContents;//当前文件夹的内容
 };
 
 #endif // MAINWINDOW_H
