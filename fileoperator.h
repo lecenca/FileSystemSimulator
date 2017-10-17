@@ -32,6 +32,7 @@ public:
     bool closeFile(std::string path);
     bool deleteFile(std::string path);
     bool rd(std::string path);
+    bool change(std::string path, uint8_t property);
 
 public:
     static FileOperator* getInstance();

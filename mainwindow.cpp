@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "createfiledialog.h"
+#include "changepropertydialog.h"
 #include "textdialog.h"
 
 #include <QtDebug>
@@ -42,7 +43,7 @@ void MainWindow::createFile(std::string name,std::string type,uint8_t property)
 {
     bool createSuccrssfully = false;
     std::string path = folderPath + "/" + name;
-    if((property & 0b00000100) == ContentItem::NORMAL){
+    if((property & ContentItem::MENU) != ContentItem::MENU){
         //创建文件
         path = path + "." + type;
         createSuccrssfully = fileOperator->createFile(path,property);
@@ -90,6 +91,23 @@ void MainWindow::refreshFolderDisplay()
             qInfo()<<"in MainWindow::refreshFolderDisplay";
             qInfo()<<"readCount ="<<readedCount;
             /***/
+//            readedCount = fileOperator->readFile(folderPath,buff,64);
+//            if(readedCount==0)
+//                break;
+//            for(unsigned i = 0;i<readedCount;i+=8){
+//                ContentItem item;
+//                std::string name;
+//                item = ContentItem::convertToItem(buff+i);
+//                name.push_back((char)item.name[0]);
+//                name.push_back((char)item.name[1]);
+//                name.push_back((char)item.name[2]);
+//                if((item.property&ContentItem::MENU)!=ContentItem::MENU){
+//                    name.push_back('.');
+//                    name.push_back((char)item.type[0]);
+//                    name.push_back((char)item.type[1]);
+//                }
+//                currentFolderContents.insert(std::make_pair(name,item));
+//            }
         }
         //将currentFolderContent的内容重新显示在listWidge上
         ui->listWidget->clear();
@@ -127,6 +145,7 @@ void MainWindow::on_listWidget_customContextMenuRequested(const QPoint &pos)
     QMenu* menu = new QMenu(this);
     QListWidgetItem* item = ui->listWidget->itemAt(ui->listWidget->mapFromGlobal(QCursor::pos()));
     if(item==nullptr){
+        //右击了菜单空白处
         menu->addAction(ui->actionCreateNew);
     }else{
         seletedItemName = item->text().toStdString();
@@ -135,6 +154,7 @@ void MainWindow::on_listWidget_customContextMenuRequested(const QPoint &pos)
             menu->addAction(ui->readModelOpen);
             menu->addAction(ui->writeModelOpen);
             menu->addAction(ui->actionDeleteFile);
+            menu->addAction(ui->actionChangeProperty);
         }else{
             //右键点击了目录
             menu->addAction(ui->actionDeleteFolder);
@@ -205,4 +225,19 @@ void MainWindow::on_writeModelOpen_triggered()
 {
     TextDialog* textDialog = new TextDialog(folderPath + "/" + seletedItemName, FileOperator::WRITEMODEL, this);
     textDialog->show();
+}
+
+void MainWindow::on_readModelOpen_triggered()
+{
+    TextDialog* textDialog = new TextDialog(folderPath + "/" + seletedItemName,
+                                            FileOperator::READMODEL,
+                                            this);
+    textDialog->show();
+}
+
+//点击右键菜单“修改属性”运行此函数
+void MainWindow::on_actionChangeProperty_triggered()
+{
+    ChangePropertyDialog *changePropertyDialog = new ChangePropertyDialog(this);
+    changePropertyDialog->show();
 }

@@ -167,8 +167,8 @@ Option<ContentItem> FileOperator::findFile(ContentItem folder, std::string& file
         type.append(1,(char)block.at(innerIndex+4));
         uint8_t property = block.at(innerIndex+5);
         if(fileName==name &&
-                (isMenu &&  property == ContentItem::MENU ||
-                 (!isMenu && (property == ContentItem::NORMAL) && typeName==type))){
+                (isMenu &&  ((property&ContentItem::MENU) == ContentItem::MENU) ||
+                 (!isMenu && ((property&ContentItem::MENU) != ContentItem::MENU) && typeName==type))){
             auto iter = block.begin();
             std::advance(iter,innerIndex);
             ContentItem item = ContentItem::convertToItem(iter);
@@ -449,8 +449,8 @@ std::tuple<uint8_t,uint8_t> FileOperator::findIndex(std::string path)
         type.append(1,(char)block.at(innerIndex+4));
         property = block.at(innerIndex+5);
         if(fileName==name &&
-                (isMenu &&  property == ContentItem::MENU ||
-                 (!isMenu && (property == ContentItem::NORMAL) && typeName==type))){
+                (isMenu &&  ((property&ContentItem::MENU) == ContentItem::MENU) ||
+                 (!isMenu && ((property&ContentItem::MENU) != ContentItem::MENU) && typeName==type))){
             return std::make_tuple((uint8_t)blockIndex,(uint8_t)innerIndex);
         }
     }
@@ -759,8 +759,8 @@ bool FileOperator::deleteContent(ContentItem item)
 {
     //检查属性，如果不能删，则删除失败。(待完成)
 
-    //如果这个contentItem是普通文件的contentItem
-    if(item.property == ContentItem::NORMAL){
+    //如果这个contentItem是文件的contentItem
+    if((item.property&ContentItem::MENU) != ContentItem::MENU){
         if(item.length==0)
             return true;
         //回收此contentItem的内容所占的磁盘空间
@@ -982,5 +982,32 @@ bool FileOperator::writeFile(std::string path, uint8_t *buff, uint32_t length)
             disk.writeBlock(block,blockIndex);
         }
     }
+    return true;
+}
+
+//修改文件属性
+bool FileOperator::change(std::string path, uint8_t property)
+{
+    //检查属性参数是否正确
+    if((property&ContentItem::MENU) == ContentItem::MENU)
+        return false;
+    Option<ContentItem> result =  findContentItem(path);
+    //检查文件是否存在
+    if(result.none)
+        return false;
+    ContentItem item = result.some;
+    //检查文件是否是“文件（非目录）”
+    if((item.property&ContentItem::MENU) == ContentItem::MENU)
+        return false;
+    uint8_t blockIndex, innerIndex;
+    std::tie(blockIndex,innerIndex) = findIndex(path);
+    ContentItem modifiedItem = item;
+    modifiedItem.property = property;
+    Block block = disk.readBlock(blockIndex).some;
+    auto itemArr = modifiedItem.toUint8Array();
+    for(unsigned i = 0;i<8;++i){
+        block[innerIndex + i] = itemArr[i];
+    }
+    disk.writeBlock(block,blockIndex);
     return true;
 }

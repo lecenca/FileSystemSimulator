@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>300</height>
+    <height>315</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,7 +17,7 @@
    <property name="geometry">
     <rect>
      <x>150</x>
-     <y>250</y>
+     <y>270</y>
      <width>91</width>
      <height>31</height>
     </rect>
@@ -35,7 +35,7 @@
    <property name="geometry">
     <rect>
      <x>280</x>
-     <y>250</y>
+     <y>270</y>
      <width>81</width>
      <height>31</height>
     </rect>
@@ -89,9 +89,9 @@
    <property name="geometry">
     <rect>
      <x>280</x>
-     <y>190</y>
-     <width>69</width>
-     <height>22</height>
+     <y>200</y>
+     <width>81</width>
+     <height>31</height>
     </rect>
    </property>
    <property name="font">
@@ -118,6 +118,45 @@
      <width>171</width>
      <height>31</height>
     </rect>
+   </property>
+  </widget>
+  <widget class="QCheckBox" name="nomal">
+   <property name="geometry">
+    <rect>
+     <x>40</x>
+     <y>170</y>
+     <width>89</width>
+     <height>16</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>普通文件</string>
+   </property>
+  </widget>
+  <widget class="QCheckBox" name="system">
+   <property name="geometry">
+    <rect>
+     <x>40</x>
+     <y>200</y>
+     <width>89</width>
+     <height>16</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>系统文件</string>
+   </property>
+  </widget>
+  <widget class="QCheckBox" name="readOnly">
+   <property name="geometry">
+    <rect>
+     <x>40</x>
+     <y>230</y>
+     <width>89</width>
+     <height>16</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>只读文件</string>
    </property>
   </widget>
  </widget>

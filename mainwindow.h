@@ -5,6 +5,7 @@
 
 #include <QMainWindow>
 #include <vector>
+#include <map>
 
 namespace Ui {
 class MainWindow;
@@ -40,6 +41,10 @@ private slots:
 
     void on_writeModelOpen_triggered();
 
+    void on_readModelOpen_triggered();
+
+    void on_actionChangeProperty_triggered();
+
 private:
 
     Ui::MainWindow *ui;
@@ -48,6 +53,7 @@ private:
     FileOperator* fileOperator;
     std::string folderPath;//当前文件夹的路径
     std::vector<ContentItem> currentFolderContent;//当前文件夹的内容
+    //std::map<std::string,ContentItem> currentFolderContents;
 };
 
 #endif // MAINWINDOW_H

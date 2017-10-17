@@ -32,7 +32,8 @@ SOURCES += \
     openedlistitem.cpp \
     contentitem.cpp \
     createfiledialog.cpp \
-    textdialog.cpp
+    textdialog.cpp \
+    changepropertydialog.cpp
 
 HEADERS += \
         mainwindow.h \
@@ -43,12 +44,14 @@ HEADERS += \
     openedlistitem.h \
     option.h \
     createfiledialog.h \
-    textdialog.h
+    textdialog.h \
+    changepropertydialog.h
 
 FORMS += \
         mainwindow.ui \
     createfiledialog.ui \
-    textdialog.ui
+    textdialog.ui \
+    changepropertydialog.ui
 
 RESOURCES += \
     rec.qrc

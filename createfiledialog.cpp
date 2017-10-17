@@ -1,5 +1,6 @@
 #include "createfiledialog.h"
 #include "ui_createfiledialog.h"
+#include "contentitem.h"
 
 #include <qdebug.h>
 
@@ -31,7 +32,13 @@ void CreateFileDialog::on_OKButton_clicked()
     qInfo()<<name<<type<<kind;
     /***/
 
-    uint8_t property = kind==QString("文件")?0b00000100:0b00001000;
+    uint8_t property = kind==QString("文件")?0b00000000:ContentItem::MENU;
+    if(ui->nomal->isChecked())
+        property = property|ContentItem::NORMAL;
+    if(ui->system->isChecked())
+        property = property|ContentItem::SYSTEM;
+    if(ui->readOnly->isChecked())
+        property = property|ContentItem::READONLY;
     emit createFile(name.toStdString(),type.toStdString(),property);
     this->close();
 }

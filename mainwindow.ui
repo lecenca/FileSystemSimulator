@@ -117,6 +117,11 @@
     <string>以写模式打开</string>
    </property>
   </action>
+  <action name="actionChangeProperty">
+   <property name="text">
+    <string>修改属性</string>
+   </property>
+  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <resources/>
