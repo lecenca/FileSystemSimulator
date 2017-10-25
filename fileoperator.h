@@ -62,7 +62,7 @@ private:
     std::tuple<uint8_t,uint8_t> findIndex(std::string path);
     Option<uint8_t> findEmptyBlock();
     bool createNewFile(std::string path, uint8_t property);
-    bool deleteContent(ContentItem item);
+    bool deleteContent(std::string path, ContentItem& item);
 
     Option<uint8_t> getNext(FileIter& iter);
     std::vector<std::string> split(std::string str, char delimiter);

@@ -35,6 +35,7 @@ public:
     void setName(std::string name);
     void setType(std::string type);
     std::array<uint8_t,8> toUint8Array();
+    std::string getFileName();
 
 };
 

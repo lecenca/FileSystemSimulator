@@ -23,3 +23,18 @@ void ContentItem::setType(std::string type){
     this->type[0] = type[0];
     this->type[1] = type[1];
 }
+
+std::string ContentItem::getFileName()
+{
+    std::string fileName;
+    fileName.push_back((char)name[0]);
+    fileName.push_back((char)name[1]);
+    fileName.push_back((char)name[2]);
+    if((property&ContentItem::MENU)!=ContentItem::MENU){
+        //是个文件
+       fileName.push_back('/');
+       fileName.push_back((char)type[0]);
+       fileName.push_back((char)type[1]);
+    }
+    return fileName;
+}

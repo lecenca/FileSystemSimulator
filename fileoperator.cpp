@@ -640,32 +640,29 @@ bool FileOperator::deleteFile(std::string path)
 bool FileOperator::rd(std::string path)
 {
     /**
-      *  检查参数是否正确--不正确（删除失败）
-      *                  \
-      *                  \
-      *                  正确
-      *                  检查目录是否存在--不存在（删除失败）
-      *                                  \
-      *                                  \
-      *                                  存在
-      *                                  使用递归删除整个目录
-      *                                  将此目录对应的ContentItem从父目录的内容中删去
-      *                                  将父目录的ContentItem的length-8，调整父目录的内容的分布
-      *                                  检查要删除的ContentItem是否是父目录内容的最后一个一个ContentItem----是
-      *                                                                                                 检查此时父目录内容所占最后一块磁盘空间是否为空--空
-      *                                                                                                 \                                          把fat中父目录内容所占最后一块磁盘空间对应的项置为0，倒数第二块置为255，并把fat写回磁盘。
-      *                                                                                                 \                                          \
-      *                                                                                                 \                                          \
-      *                                                                                                 \                                          不空（删除成功）
-      *                                                                                                 \
-      *                                                                                                 \
-      *                                                                                                 不是
-      *                                                                                                 把最后一个ContentItem覆盖要删掉的此文件的ContentItem，把此块写回磁盘。
-      *                                                                                                 检查此时父目录内容所占最后一块磁盘空间是否为空-----------------------------空
-      *                                                                                                                                                                       把fat中父目录内容所占最后一块磁盘空间对应的项置为0，倒数第二块置为255，并把fat写回磁盘。
-      *                                                                                                                                                                       \
-      *                                                                                                                                                                       \
-      *                                                                                                                                                                       不空（删除成功）
+      * 检查参数是否正确
+      *   不正确（删除失败）
+      *   正确
+      *   检查目录是否存在
+      *     不存在（删除失败）
+      *     存在
+      *     使用递归删除整个目录，检查是否能全部删掉
+      *       不能（删除（部分）失败）
+      *       能
+      *       将此目录对应的ContentItem从父目录的内容中删去
+      *       将父目录的ContentItem的length-8，调整父目录的内容的分布
+      *       检查要删除的ContentItem是否是父目录内容的最后一个一个ContentItem
+      *         是
+      *         检查此时父目录内容所占最后一块磁盘空间是否为空
+      *           空
+      *           把fat中父目录内容所占最后一块磁盘空间对应的项置为0，倒数第二块置为255，并把fat写回磁盘。
+      *           不空（删除成功）
+      *         不是
+      *         把最后一个ContentItem覆盖要删掉的此文件的ContentItem，把此块写回磁盘。
+      *         检查此时父目录内容所占最后一块磁盘空间是否为空
+      *           空
+      *           把fat中父目录内容所占最后一块磁盘空间对应的项置为0，倒数第二块置为255，并把fat写回磁盘。
+      *           不空（删除成功）
       *
       */
 
@@ -683,8 +680,8 @@ bool FileOperator::rd(std::string path)
     if(openedList.find(path)!=openedList.end())
         return false;
     ContentItem folder = result.some;
-    //删除folder的内容
-    deleteContent(folder);
+    //递归地删除folder的内容
+    deleteContent(path,folder);
     //获取父目录（父文件夹）的ContentItem
     std::string fatherFolderName = path.substr(0,path.length()-4);
     ContentItem fatherFolder = findContentItem(fatherFolderName).some;
@@ -755,16 +752,20 @@ bool FileOperator::rd(std::string path)
 }
 
 //递归地回收给定ContentItem的内容所占的全部磁盘空间，但不删除这个ContentItem本身
-bool FileOperator::deleteContent(ContentItem item)
+//参数path是此contentitem所代表的文件的路径
+//若其中有无法删掉的文件，则contentitem会被修改并写回磁盘
+bool FileOperator::deleteContent(std::string path,ContentItem& item)
 {
-    //检查属性，如果不能删，则删除失败。(待完成)
-
+    ContentItem tItem = item;
+    //如果此item被打开，则删除失败
+    if(openedList.find(path)!=openedList.end())
+        return false;
     //如果这个contentItem是文件的contentItem
-    if((item.property&ContentItem::MENU) != ContentItem::MENU){
-        if(item.length==0)
+    if((tItem.property&ContentItem::MENU) != ContentItem::MENU){
+        if(tItem.length==0)
             return true;
         //回收此contentItem的内容所占的磁盘空间
-        uint8_t blockIndex = item.startPos;
+        uint8_t blockIndex = tItem.startPos;
         uint8_t next;
         while(blockIndex != 255){
             next = fat[blockIndex];
@@ -773,16 +774,16 @@ bool FileOperator::deleteContent(ContentItem item)
         }
     }else{
         //如果这个contentItem是文件夹的contentItem
-        if(item.length==0)
+        if(tItem.length==0)
             return true;
          //读入这个文件夹的内容，并一一回收里面每个文件和文件夹所分配的磁盘空间。
         {
             uint8_t logicIndex = 0;
-            uint8_t blockIndex = item.startPos;
+            uint8_t blockIndex = tItem.startPos;
             uint8_t innerIndex = 0;
             std::vector<ContentItem> contentItemList;
             Block buff = disk.readBlock(blockIndex).some;
-            while(logicIndex<item.length){
+            while(logicIndex<tItem.length){
                 auto iter = buff.cbegin();
                 std::advance(iter,innerIndex);
                 contentItemList.push_back(ContentItem::convertToItem(iter));
@@ -794,13 +795,55 @@ bool FileOperator::deleteContent(ContentItem item)
                 }
             }
             //删除
-            for(ContentItem item: contentItemList){
-                deleteContent(item);
+            {
+                bool deleteSuccessfully;
+                for(int i = contentItemList.size() - 1;i>=0;--i){
+                    deleteSuccessfully = deleteContent(path + "/" + contentItemList.at(i).getFileName(),
+                                                       contentItemList.at(i));
+                    if(!deleteSuccessfully){
+                        //删除失败，修改此item和fat并返回
+                        uint8_t remainCount = (i + 1)*8/64; //剩余的盘块数
+                        if((i+1)*8%64!=0)
+                            ++remainCount;
+                        uint8_t totalCount = contentItemList.size()/64; //总共的盘块数
+                        if(contentItemList.size()%64!=0)
+                            ++totalCount;
+                        uint8_t deleteCount = totalCount - remainCount; //要删除的盘块数
+                        //修改fat
+                        uint8_t endIndex = tItem.startPos;
+                        for(unsigned i = 1;i <= deleteCount+1;++i)
+                            endIndex = fat[endIndex];
+                        uint8_t startIndex = tItem.startPos;
+                        while(fat[endIndex]!=255){
+                            startIndex = fat[startIndex];
+                            endIndex = fat[endIndex];
+                        }
+                        uint8_t t;
+                        while(startIndex!=endIndex){
+                            t = fat[startIndex];
+                            fat[startIndex] = 255;
+                            startIndex = t;
+                        }
+                        //修改contentitem
+                        item.length = i * 8;
+                        //将修改后的contentitem写回磁盘
+                        {
+                            uint8_t blockIndex,innerIndex;
+                            std::tie(blockIndex,innerIndex) = findIndex(path);
+                            Block buff = disk.readBlock(blockIndex).some;
+                            auto arr = item.toUint8Array();
+                            for(unsigned j = 0;j<8;++j)
+                                buff[innerIndex+j] = arr[j];
+                            disk.writeBlock(buff,blockIndex);
+                        }
+                        return false;
+                    }
+                }
             }
         }
         //回收这个文件夹所占有的磁盘空间
-        if(item.length!=0){
-            uint8_t blockIndex = item.startPos;
+        if(tItem.length!=0){
+            uint8_t blockIndex = tItem.startPos;
             uint8_t next;
             while(blockIndex!=255){
                 next = fat[blockIndex];
