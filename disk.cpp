@@ -4,16 +4,8 @@
 
 Disk::Disk()
 {
-    /***/
-    qInfo()<<"in Disk::Disk";
-    qInfo()<<"start in Disk::Disk\n";
-    /***/
     diskFile.open("disk.vdisk",
                   std::ios::in|std::ios::out|std::ios_base::binary);
-    /***/
-    qInfo()<<"in Disk::Disk";
-    qInfo()<<"disk.vdisk opened? : "<<diskFile.is_open()<<"\n";
-    /***/
 }
 
 Disk::~Disk(){

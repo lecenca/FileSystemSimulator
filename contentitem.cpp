@@ -32,7 +32,7 @@ std::string ContentItem::getFileName()
     fileName.push_back((char)name[2]);
     if((property&ContentItem::MENU)!=ContentItem::MENU){
         //是个文件
-       fileName.push_back('/');
+       fileName.push_back('.');
        fileName.push_back((char)type[0]);
        fileName.push_back((char)type[1]);
     }

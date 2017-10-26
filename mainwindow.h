@@ -46,6 +46,8 @@ private slots:
 
     void on_actionChangeProperty_triggered();
 
+    void on_actionTestOpen_triggered();
+
 private:
 
     Ui::MainWindow *ui;

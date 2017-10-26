@@ -3,6 +3,7 @@
 #include "createfiledialog.h"
 #include "changepropertydialog.h"
 #include "textdialog.h"
+#include "testopendialog.h"
 
 #include <QtDebug>
 
@@ -18,7 +19,7 @@ MainWindow::MainWindow(QWidget *parent) :
         refreshFolderDisplay();
 
         /***/
-        ui->listWidget->addAction(ui->actionCreateNew);
+        //ui->listWidget->addAction(ui->actionCreateNew);
         /***/
 
     }
@@ -61,10 +62,6 @@ void MainWindow::createFile(std::string name,std::string type,uint8_t property)
 void MainWindow::refreshFolderDisplay()
 {
     try{
-        /***/
-        qInfo()<<"in MainWindow::refreshFolderDisplay";
-        qInfo()<<"001\n";
-        /***/
         ui->pathBar->setText(folderPath.data());
         uint8_t buff[64];
         currentFolderContents.clear();
@@ -74,16 +71,8 @@ void MainWindow::refreshFolderDisplay()
             qInfo()<<"open folderPath false, this should not happen\n";
             throw std::exception();
         }
-        /***/
-        qInfo()<<"in MainWindow::refreshFolderDisplay";
-        qInfo()<<"002\n";
-        /***/
         uint8_t readedCount;
         for(;;){
-            /***/
-            qInfo()<<"in MainWindow::refreshFolderDisplay";
-            qInfo()<<"readCount ="<<readedCount;
-            /***/
             readedCount = fileOperator->readFile(folderPath,buff,64);
             if(readedCount==0)
                 break;
@@ -143,6 +132,7 @@ void MainWindow::on_listWidget_customContextMenuRequested(const QPoint &pos)
             menu->addAction(ui->writeModelOpen);
             menu->addAction(ui->actionDeleteFile);
             menu->addAction(ui->actionChangeProperty);
+            menu->addAction(ui->actionTestOpen);
         }else{
             //右键点击了目录
             menu->addAction(ui->actionDeleteFolder);
@@ -240,4 +230,12 @@ void MainWindow::changeProperty(std::string name, uint8_t property)
     path = folderPath + "/" + name;
     fileOperator->change(path,property);
     refreshFolderDisplay();
+}
+
+//点击右键菜单“测试性打开”运行此函数
+void MainWindow::on_actionTestOpen_triggered()
+{
+    std::string path = folderPath + "/" + seletedItemName;
+    TestOpenDialog* testOpenDialog = new TestOpenDialog(path,this);
+    testOpenDialog->show();
 }

@@ -33,7 +33,8 @@ SOURCES += \
     contentitem.cpp \
     createfiledialog.cpp \
     textdialog.cpp \
-    changepropertydialog.cpp
+    changepropertydialog.cpp \
+    testopendialog.cpp
 
 HEADERS += \
         mainwindow.h \
@@ -45,13 +46,15 @@ HEADERS += \
     option.h \
     createfiledialog.h \
     textdialog.h \
-    changepropertydialog.h
+    changepropertydialog.h \
+    testopendialog.h
 
 FORMS += \
         mainwindow.ui \
     createfiledialog.ui \
     textdialog.ui \
-    changepropertydialog.ui
+    changepropertydialog.ui \
+    testopendialog.ui
 
 RESOURCES += \
     rec.qrc

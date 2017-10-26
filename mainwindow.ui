@@ -122,6 +122,11 @@
     <string>修改属性</string>
    </property>
   </action>
+  <action name="actionTestOpen">
+   <property name="text">
+    <string>测试性打开</string>
+   </property>
+  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <resources/>
