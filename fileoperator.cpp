@@ -1,9 +1,10 @@
 #include "fileoperator.h"
 
-#include <qdebug.h>
+//#include <qdebug.h>
 
 #include <iterator>
 #include <tuple>
+#include <regex>
 
 //文件打开都没关，记得关。
 
@@ -40,6 +41,7 @@ ContentItem FileOperator::getRootItem()
     return rootItem;
 }
 
+//path：文件路径 property： 打开模式（如写模式，读模式）
 bool FileOperator::openFile(std::string path,uint8_t property)
 {
     try{
@@ -47,6 +49,10 @@ bool FileOperator::openFile(std::string path,uint8_t property)
         if(result.none){
             return false;
         }
+        if(((result.some.property&(ContentItem::MENU|ContentItem::READONLY)) == ContentItem::READONLY) &&
+                property == FileOperator::WRITEMODEL)
+            //文件是只读文件且以只读模式打开，则打开失败
+            return false;
         openedList.insert(
                     std::make_pair(
                         path,
@@ -54,7 +60,7 @@ bool FileOperator::openFile(std::string path,uint8_t property)
         return true;
     }
     catch(std::exception e){
-        qInfo()<<"break in FileOperator::openFile";
+        //qInfo()<<"break in FileOperator::openFile";
         throw e;
     }
 }
@@ -89,12 +95,12 @@ uint32_t FileOperator::readFile(std::string path, uint8_t *buff, uint32_t length
         return length;
     }
     catch(std::out_of_range e){
-        qInfo()<<"break in FileOperator::readFile";
-        qInfo()<<"catch a out_of_range exception in FileOperator::readFile";
+//        qInfo()<<"break in FileOperator::readFile";
+//        qInfo()<<"catch a out_of_range exception in FileOperator::readFile";
         throw e;
     }
     catch(std::exception e){
-        qInfo()<<"break in FileOperator::readFile";
+//        qInfo()<<"break in FileOperator::readFile";
         throw e;
     }
 }
@@ -330,7 +336,7 @@ bool FileOperator::createNewFile(std::string path, uint8_t property)
         return true;
     }
     catch(std::exception e){
-        qInfo()<<"break in FileOperator::createNewFile";
+//        qInfo()<<"break in FileOperator::createNewFile";
         throw e;
     }
 }
@@ -358,8 +364,10 @@ Option<ContentItem> FileOperator::findContentItem(std::string path)
 //检查文件名是否合法
 bool FileOperator::checkName(std::string path)
 {
-    QRegExp reg(QString("^rot(/[^\\$\\./]{3})*(/[^\\$\\./]{3}\\.[^\\$\\./]{2}){0,1}$"));
-    return reg.exactMatch(QString(path.data()));
+//    QRegExp reg(QString("^rot(/[^\\$\\./]{3})*(/[^\\$\\./]{3}\\.[^\\$\\./]{2}){0,1}$"));
+//    return reg.exactMatch(QString(path.data()));
+    std::regex reg("rot(/[^\\$\\./]{3})*(/[^\\$\\./]{3}\\.[^\\$\\./]{2}){0,1}");
+    return std::regex_match(path,reg);
 }
 
 //找出ContentItem在磁盘中的位置，返回元组 (blockIndex,innerIndex)
@@ -511,9 +519,12 @@ bool FileOperator::deleteFile(std::string path)
      */
 
     //检查参数是否正确
-    QRegExp reg(QString("^rot(/[^\\$\\./]{3})*(/[^\\$\\./]{3}\\.[^\\$\\./]{2})$"));
-    if(!reg.exactMatch(QString(path.data())))
+    std::regex reg("rot(/[^\\$\\./]{3})*(/[^\\$\\./]{3}\\.[^\\$\\./]{2})");
+    if(!std::regex_match(path,reg))
         return false;
+//    QRegExp reg(QString("^rot(/[^\\$\\./]{3})*(/[^\\$\\./]{3}\\.[^\\$\\./]{2})$"));
+//    if(!reg.exactMatch(QString(path.data())))
+//        return false;
     //检查是否被打开
     if(openedList.find(path)!=openedList.end())
         return false;
@@ -635,9 +646,12 @@ bool FileOperator::rd(std::string path)
     //检查属性，如果不能删，则删除失败。（待完成）（大改）
 
     //检查参数是否正确
-    QRegExp reg(QString("^rot(/[^\\$\\./]{3})*$"));
-    if(!reg.exactMatch(QString(path.data())))
+    std::regex reg("rot(/[^\\$\\./]{3})*");
+    if(!std::regex_match(path,reg))
         return false;
+//    QRegExp reg(QString("^rot(/[^\\$\\./]{3})*$"));
+//    if(!reg.exactMatch(QString(path.data())))
+//        return false;
     //检查目录是否存在
     Option<ContentItem> result = findContentItem(path);
     if(result.none)
@@ -776,12 +790,6 @@ bool FileOperator::deleteContent(std::string path,ContentItem item)
                         if(contentItemList.size()*8%64!=0)
                             ++totalCount;
                         uint8_t deleteCount = totalCount - remainCount; //要删除的盘块数
-                        /***/
-                        qInfo()<<"in FileOperator::deleteContent";
-                        qInfo()<<"remainCount: "<<remainCount;
-                        qInfo()<<"totalCount: "<<totalCount;
-                        qInfo()<<"deleteCount: "<<deleteCount;
-                        /***/
                         if(deleteCount!=0){
                             //修改fat
                             uint8_t endIndex = tItem.startPos;
@@ -850,9 +858,12 @@ bool FileOperator::writeFile(std::string path, uint8_t *buff, uint32_t length)
       *
       */
     //检查参数是否正确
-    QRegExp reg(QString("^rot(/[^\\$\\./]{3})*(/[^\\$\\./]{3}\\.[^\\$\\./]{2})$"));
-    if(!reg.exactMatch(QString(path.data())))
+    std::regex reg("rot(/[^\\$\\./]{3})*(/[^\\$\\./]{3}\\.[^\\$\\./]{2})");
+    if(!std::regex_match(path,reg))
         return false;
+//    QRegExp reg(QString("^rot(/[^\\$\\./]{3})*(/[^\\$\\./]{3}\\.[^\\$\\./]{2})$"));
+//    if(!reg.exactMatch(QString(path.data())))
+//        return false;
     //检查文件是否存在
     Option<ContentItem> result = findContentItem(path);
     if(result.none)

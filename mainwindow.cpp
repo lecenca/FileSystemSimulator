@@ -198,13 +198,21 @@ void MainWindow::on_actionBack_triggered()
     }
 }
 
-//点击右键中的 “以写模式打开” 运行此函数
+//点击右键菜单中的 “以写模式打开” 运行此函数
 void MainWindow::on_writeModelOpen_triggered()
 {
-    TextDialog* textDialog = new TextDialog(folderPath + "/" + seletedItemName, FileOperator::WRITEMODEL, this);
+
+    if(!fileOperator->openFile(folderPath + "/" + seletedItemName,FileOperator::WRITEMODEL)){
+        //以写模式打开只读文件，打开失败
+        return;
+    }
+    TextDialog* textDialog = new TextDialog(folderPath + "/" + seletedItemName,
+                                            FileOperator::WRITEMODEL,
+                                            this);
     textDialog->show();
 }
 
+//点击右键菜单中的 “以读模式打开” 运行此函数
 void MainWindow::on_readModelOpen_triggered()
 {
     TextDialog* textDialog = new TextDialog(folderPath + "/" + seletedItemName,
@@ -224,6 +232,7 @@ void MainWindow::on_actionChangeProperty_triggered()
 
 }
 
+//修改属性
 void MainWindow::changeProperty(std::string name, uint8_t property)
 {
     std::string path;
