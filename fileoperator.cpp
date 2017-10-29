@@ -45,10 +45,15 @@ ContentItem FileOperator::getRootItem()
 bool FileOperator::openFile(std::string path,uint8_t property)
 {
     try{
+
         Option<ContentItem> result = findContentItem(path);
         if(result.none){
             return false;
         }
+        //检查文件是否以打开
+        if(openedList.find(path)!=openedList.end())
+            //文件以打开，打开失败
+            return false;
         if(((result.some.property&(ContentItem::MENU|ContentItem::READONLY)) == ContentItem::READONLY) &&
                 property == FileOperator::WRITEMODEL)
             //文件是只读文件且以只读模式打开，则打开失败
@@ -1011,6 +1016,9 @@ bool FileOperator::change(std::string path, uint8_t property)
     ContentItem item = result.some;
     //检查文件是否是“文件（非目录）”
     if((item.property&ContentItem::MENU) == ContentItem::MENU)
+        return false;
+    //检查文件是否打开（只有在关闭的条件下才能改属性）
+    if(openedList.find(path)!=openedList.end())
         return false;
     uint8_t blockIndex, innerIndex;
     std::tie(blockIndex,innerIndex) = findIndex(path);

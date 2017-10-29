@@ -1,6 +1,6 @@
 #include "disk.h"
 
-#include <qdebug.h>
+//#include <qdebug.h>
 
 Disk::Disk()
 {

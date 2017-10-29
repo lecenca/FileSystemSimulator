@@ -11,14 +11,6 @@
 
 using Block = std::array<uint8_t,64>;
 
-/**
- * @brief The FileIter class
- * 拥有一个FileIter相当于拥有一个文件，
- * 准确地说，FileIter表示文件在内存中的
- * 一个副本。对文件的操作都通过对FileIter
- * 操作实现。注意，最后要进行写回磁盘，操作
- * 才会保存下来。
- */
 class FileIter
 {
 

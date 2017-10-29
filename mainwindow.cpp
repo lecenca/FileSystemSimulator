@@ -176,6 +176,12 @@ void MainWindow::on_listWidget_doubleClicked(const QModelIndex &index)
         intoFolder(item->text().toStdString());
     }else{
         //双击了文件，则以只读模式打开文件
+        if(!fileOperator->openFile(folderPath + "/" + item->text().toStdString(),FileOperator::READMODEL)){
+            //以读模式打开只读文件，打开失败
+            return;
+        }
+        //若打开成功，先把文件关掉
+        fileOperator->closeFile(folderPath + "/" + item->text().toStdString());
         TextDialog* textDialog = new TextDialog(folderPath + "/" + item->text().toStdString(),
                                                 FileOperator::READMODEL,
                                                 this);
@@ -206,6 +212,8 @@ void MainWindow::on_writeModelOpen_triggered()
         //以写模式打开只读文件，打开失败
         return;
     }
+    //若打开成功，先把文件关掉
+    fileOperator->closeFile(folderPath + "/" + seletedItemName);
     TextDialog* textDialog = new TextDialog(folderPath + "/" + seletedItemName,
                                             FileOperator::WRITEMODEL,
                                             this);
@@ -215,6 +223,12 @@ void MainWindow::on_writeModelOpen_triggered()
 //点击右键菜单中的 “以读模式打开” 运行此函数
 void MainWindow::on_readModelOpen_triggered()
 {
+    if(!fileOperator->openFile(folderPath + "/" + seletedItemName,FileOperator::READMODEL)){
+        //以读模式打开只读文件，打开失败
+        return;
+    }
+    //若打开成功，先把文件关掉
+    fileOperator->closeFile(folderPath + "/" + seletedItemName);
     TextDialog* textDialog = new TextDialog(folderPath + "/" + seletedItemName,
                                             FileOperator::READMODEL,
                                             this);
@@ -245,6 +259,11 @@ void MainWindow::changeProperty(std::string name, uint8_t property)
 void MainWindow::on_actionTestOpen_triggered()
 {
     std::string path = folderPath + "/" + seletedItemName;
+    if(!fileOperator->openFile(path,FileOperator::READMODEL))
+        //若打开失败，则返回
+        return;
+    //若成功，则先关掉文件，再交给TestOpenDialog处理
+    fileOperator->closeFile(path);
     TestOpenDialog* testOpenDialog = new TestOpenDialog(path,this);
     testOpenDialog->show();
 }

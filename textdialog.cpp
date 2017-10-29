@@ -1,6 +1,8 @@
 #include "textdialog.h"
 #include "ui_textdialog.h"
 
+#include <QDebug>
+
 TextDialog::TextDialog(std::string path, uint8_t openModel, QWidget *parent) :
     QDialog(parent),path(path),openModel(openModel),
     ui(new Ui::TextDialog)
@@ -32,7 +34,7 @@ TextDialog::~TextDialog()
 
 void TextDialog::closeEvent(QCloseEvent *event)
 {
-    if(ui->textEdit->toPlainText().length()!=0 && openModel==FileOperator::WRITEMODEL){
+    if((ui->textEdit->toPlainText().length()!=0) && (openModel==FileOperator::WRITEMODEL)){
         //把新加的数据写回到文件中
         std::string data = ui->textEdit->toPlainText().toStdString();
         if(openModel==FileOperator::WRITEMODEL){
